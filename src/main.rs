@@ -1,3 +1,9 @@
+mod ui;
+mod dsp;
+mod aim;
+mod interface;
+
 fn main() {
-    println!("Hello, world!");
+	let mut aim = aim::Aim::new();
+	aim.join();
 }
