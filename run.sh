@@ -1,2 +1,7 @@
-cargo run
-#cargo test -- --nocapture --test-threads=1
+#!/usr/bin/env bash
+clear
+pydex aim > index.txt
+python3 -m aim test.txt #&&
+#poetry run pylint -E aim.py &&
+#poetry run black aim.py
+#todo
