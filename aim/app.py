@@ -1,14 +1,9 @@
-import shutil
 import os
 import random
 import sys
-import io
 import shutil
 
 blocks = [[]]
-
-ids = set()
-
 
 class Node:
     """Represents a node, which is the units the synth is made of"""
@@ -17,7 +12,7 @@ class Node:
 
     def __init_subclass__(cls):
         assert getattr(cls, "name", None)
-        Node.node_registry[cls.name] = cls.__class__
+        Node.node_registry[cls.name] = cls
 
     def __init__(self, nick=None):
         self.nick = nick
@@ -27,21 +22,22 @@ class Node:
         return f"Node(name={self.name},	nick={self.nick}, properties={self.properties})"
 
     def __str__(self):
-        result = io.StringIO()
-        result.write(f"# {self.name} {self.nick}")
-        return result.getvalue()
+        assert not any(" " in x for x in self.properties), "Space found in node property"
+        return f"# {self.name} {self.nick}\n" + "\n".join(f"{k} {v}\n" for k, v in self.properties.items())
 
 
 class Nodes:
     def __init__(self):
         super().__init__()
         self.ids = set()
-        self.nodes = []
+        self.nodes = {}
 
     def add(self, name, nick=None):
         nick = nick or "_" + "".join(random.choice("abcdefghjklmnpqrstvwxyz") for _ in range(10))
-        assert nick not in (x.nick for x in self.nodes), f"Node {nick} already added to list"
-        self.nodes.append(Node.node_registry[name](nick))
+        assert nick not in self.nodes, f"Node {nick} already added to list"
+        node = Node.node_registry[name](nick)
+        self.nodes[nick] = node
+        return node
 
     def __len__(self):
         return len(self.nodes)
@@ -50,10 +46,10 @@ class Nodes:
         return repr(self.nodes)
 
     def __str__(self):
-        result = io.StringIO()
-        for node in self.nodes:
-            result.write(str(node))
-        return result
+        return "\n".join(str(node) for node in self.nodes.values())
+
+    def __getitem__(self, *a, **b):
+        return self.nodes.__getitem__(*a, **b)
 
 
 class Score(Node):
@@ -71,23 +67,30 @@ class Out(Node):
 def parse(path) -> Nodes:
     def fail(text=None):
         print(f"Line {i+1}")
+        exit(1)
+
+    def parse_command(line):
+        pass
 
     nodes = Nodes()
 
     with open(path) as f:
+        last_node = None
         for i, line in enumerate(f.readlines()):
             line = line.strip("\n")
             if line.startswith("# "):
-                header = line.split(" ", 1)[1]
+                header = line.strip().split(" ", 1)[1]
                 name = header.split(" ", 1)[0]
                 nick = (header.split(" ", 1)[1:] or [None])[0]
-                print(name, nick)
-                nodes.add(name, nick)
+                last_node = nodes.add(name, nick)
+            elif line.strip():  # Everything is a property
+                key, value = line.split(" ", 1)
+                last_node.properties[key] = value
 
     return nodes
 
 
 def write(path, nodes: Nodes):
     path = os.path.abspath(path)
-    with open(path) as f:
+    with open(path, "w") as f:
         f.write(str(nodes))
