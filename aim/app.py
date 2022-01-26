@@ -27,6 +27,9 @@ class Node:
         assert not any(" " in x for x in self.properties), "Space found in node property"
         return f"# {self.name} {self.nick}\n" + "\n".join(f"{k} {v}\n" for k, v in self.properties.items())
 
+    def on_parse(self):
+        pass
+
 
 class Nodes:
     def __init__(self):
@@ -60,6 +63,30 @@ class Nodes:
 class Score(Node):
     name = "score"
 
+    def on_parse(self):
+        print("Score got properties", self.properties)
+        if "file" in self.properties:
+            with open(self.properties["file"]) as f:
+                data = f.read().strip()
+
+            if not data or 1:
+                # Score is empty, make a blank one
+                data = " ".join("ABCDEFG"[i % 7] for i in range(7*6)) + "\n"
+                data += " ".join(str(i // 7) for i in range(7*6)) + "\n"
+                data += "-" * (7*6*2) + "\n"
+                for i in range(100):
+                    data += " |" * (7*6) + "\n"
+
+            # Parse the file
+
+            # Look for commands
+
+            with open(self.properties["file"], "w") as f:
+                f.write(data)
+
+            import pathlib
+            pathlib.Path(self.properties["file"]).touch()
+
 
 class Sine(Node):
     name = "sin"
@@ -91,6 +118,9 @@ def parse(path) -> Nodes:
             if not line:
                 pass
             elif line.startswith("# "):
+                if last_node:
+                    last_node.on_parse()
+
                 header = line.split(" ", 1)[1]
                 name = header.split(" ", 1)[0]
                 nick = (header.split(" ", 1)[1:] or [None])[0]
@@ -119,7 +149,7 @@ def transpile(output_path: str, nodes: Nodes) -> str:
 
 def llvm_compile(c_path: str):
     filename = "output"
-    subprocess.run(["clang-12", "-o", filename, c_path.encode("utf-8")], check=True)
+    subprocess.run(["clang-13", "-o", filename, c_path.encode("utf-8")], check=True)
     return os.path.split(c_path)[0] + os.path.sep + filename
 
 def run(bin_path):

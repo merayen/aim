@@ -25,3 +25,6 @@ class CSin(CNode):
 
 class CScore(CNode):
     name = "out"
+
+class CPoly(CNode):
+    name = "poly"
