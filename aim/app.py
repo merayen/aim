@@ -1,9 +1,11 @@
 import os
 import random
-import sys
 import shutil
+import subprocess
+import sys
 
 blocks = [[]]
+
 
 class Node:
     """Represents a node, which is the units the synth is made of"""
@@ -33,7 +35,7 @@ class Nodes:
         self.nodes = {}
 
     def add(self, name, nick=None):
-        nick = nick or "_" + "".join(random.choice("abcdefghjklmnpqrstvwxyz") for _ in range(10))
+        nick = nick or "ID" + "".join(random.choice("abcdefghjklmnpqrstvwxyz") for _ in range(10))
         assert nick not in self.nodes, f"Node {nick} already added to list"
         node = Node.node_registry[name](nick)
         self.nodes[nick] = node
@@ -51,6 +53,9 @@ class Nodes:
     def __getitem__(self, *a, **b):
         return self.nodes.__getitem__(*a, **b)
 
+    def __iter__(self):
+        return self.nodes.values().__iter__()
+
 
 class Score(Node):
     name = "score"
@@ -64,9 +69,14 @@ class Out(Node):
     name = "out"
 
 
+def parse_folder(path):  # TODO merayen Support parsing whole folders
+    # Probably start with main.txt, or whatever that is "main" or startswith "main.", and require only 1
+    pass
+
+
 def parse(path) -> Nodes:
     def fail(text=None):
-        print(f"Line {i+1}")
+        print(f"{path}:{i+1}" + (f" {text}" if text else ""))
         exit(1)
 
     def parse_command(line):
@@ -77,15 +87,21 @@ def parse(path) -> Nodes:
     with open(path) as f:
         last_node = None
         for i, line in enumerate(f.readlines()):
-            line = line.strip("\n")
-            if line.startswith("# "):
-                header = line.strip().split(" ", 1)[1]
+            line = line.strip()
+            if not line:
+                pass
+            elif line.startswith("# "):
+                header = line.split(" ", 1)[1]
                 name = header.split(" ", 1)[0]
                 nick = (header.split(" ", 1)[1:] or [None])[0]
                 last_node = nodes.add(name, nick)
-            elif line.strip():  # Everything is a property
+            elif len(line.split(" ", 1)) == 2:
+                if not last_node:
+                    fail(f"Expected node declaration, but got: {line}")
                 key, value = line.split(" ", 1)
                 last_node.properties[key] = value
+            else:
+                fail(f"Can't parse: {line}")
 
     return nodes
 
@@ -94,3 +110,17 @@ def write(path, nodes: Nodes):
     path = os.path.abspath(path)
     with open(path, "w") as f:
         f.write(str(nodes))
+
+def transpile(output_path: str, nodes: Nodes) -> str:
+    """Transpile to C"""
+    from .transpiler import Transpiler
+    with open(output_path, "w") as f:
+        f.write(str(Transpiler(nodes)))
+
+def llvm_compile(c_path: str):
+    filename = "output"
+    subprocess.run(["clang-12", "-o", filename, c_path.encode("utf-8")], check=True)
+    return os.path.split(c_path)[0] + os.path.sep + filename
+
+def run(bin_path):
+    subprocess.run([bin_path], check=True)
