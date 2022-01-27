@@ -78,7 +78,23 @@ class Score(Node):
                 data = f.read().strip()
 
             buffer = View(data)
-            print(f"{buffer.attributes=!r}	{buffer.commands=!r}")  # TODO merayen remove
+
+            for x in buffer.commands:
+                if x == "help":
+                    print("Help on score-node")
+                    print("="*80)
+                    print()
+                    print("The score view is a view for add, editing and removing notes.")
+                    print()
+                    print("Commands:")
+                    print(":help")
+                    print("\tshows this help")
+                    print(":play")
+                    print(":p")
+                    print("\tStart to play from the position this command was put at. CTRL-C to stop playback.")
+                    print()
+                elif x == "play":
+                    raise NotImplementedError("Make the score view be able to start playback of the whole project")  # TODO merayen
 
             if not data or 1:
                 # Score is empty, make a blank one
