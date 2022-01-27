@@ -1,10 +1,12 @@
+import io
 import os
 import random
 import shutil
+import pathlib
 import subprocess
 import sys
 
-blocks = [[]]
+from .view import View
 
 
 class Node:
@@ -35,7 +37,7 @@ class Nodes:
     def __init__(self):
         super().__init__()
         self.ids = set()
-        self.nodes = {}
+        self.nodes: dict[str, Node] = {}
 
     def add(self, name, nick=None):
         nick = nick or "ID" + "".join(random.choice("abcdefghjklmnpqrstvwxyz") for _ in range(10))
@@ -64,32 +66,64 @@ class Score(Node):
     name = "score"
 
     def on_parse(self):
-        print("Score got properties", self.properties)
-        if "file" in self.properties:
+        score_file = self.properties["file"]
+        if score_file:
+            assert ".." not in score_file
+            assert score_file.strip()[0] != "/"
+
+            if not os.path.exists(self.properties["file"]):
+                pathlib.Path(self.properties["file"]).touch()
+
             with open(self.properties["file"]) as f:
                 data = f.read().strip()
 
+            buffer = View(data)
+            print(f"{buffer.attributes=!r}	{buffer.commands=!r}")  # TODO merayen remove
+
             if not data or 1:
                 # Score is empty, make a blank one
-                data = " ".join("ABCDEFG"[i % 7] for i in range(7*6)) + "\n"
-                data += " ".join(str(i // 7) for i in range(7*6)) + "\n"
-                data += "-" * (7*6*2) + "\n"
-                for i in range(100):
-                    data += " |" * (7*6) + "\n"
 
-            # Parse the file
+                new = io.StringIO()
 
-            # Look for commands
+                # TODO merayen add vertical position bar
+                
+                new.write(" ".join("A#B#C#D#E#F#G# "[i % 15] for i in range(7*12)) + "\n")
+                new.write((" "*(14*2+1)).join(str(i) for i in range(2,6)) + "\n")
+                new.write("-" * (7*6*2) + "\n")
+
+                bar = "|" + " ."*15 + " |"
+
+                for i in range(16*20):
+                    if (i % 16) == 15:
+                        new.write("= " * (7*6) + bar + "\n")
+                    elif (i % 4) == 3:
+                        new.write("- " * (7*6) + bar + "\n")
+                    else:
+                        new.write("  " * (7*6) + bar + "\n")
+
+                data = new.getvalue()
+
+            # TODO merayen Monkey parse the whole file
+
+            # TODO merayen Interpret blank lines in the score that the user wants to fill in
+
+            # TODO merayen Look for commands
 
             with open(self.properties["file"], "w") as f:
                 f.write(data)
 
-            import pathlib
             pathlib.Path(self.properties["file"]).touch()
+
+    def __parse(self, text):
+        pass
 
 
 class Sine(Node):
     name = "sin"
+
+
+class Sample(Node):
+    name = "sample"
 
 
 class Out(Node):
