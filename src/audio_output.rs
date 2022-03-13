@@ -11,8 +11,6 @@ pub struct ao_sample_format {
 
 
 const AO_FMT_LITTLE: std::os::raw::c_int = 1;
-const AO_FMT_BIG: std::os::raw::c_int = 2;
-const AO_FMT_NATIVE: std::os::raw::c_int = 4;
 
 extern {
 	fn ao_initialize();
@@ -27,18 +25,20 @@ extern {
 	fn ao_shutdown();
 }
 
+enum Action {
+	Play { raw_buffer: Vec<i8>},
+	End(),
+}
+
 pub struct AudioOutput {
 	bits: i32,
 	channels: i32,
-	rate: i32,
-	tx: Sender<Vec<i8>>,
+	tx: Sender<Action>,
 }
 
 impl AudioOutput {
 	pub fn new(channels: i32, rate: i32) -> AudioOutput {
-
-
-		let (tx, rx): (Sender<Vec<i8>>, Receiver<Vec<i8>>) = std::sync::mpsc::channel();
+		let (tx, rx): (Sender<Action>, Receiver<Action>) = std::sync::mpsc::channel();
 
 		std::thread::spawn(move || {
 			let device: *mut std::os::raw::c_void;
@@ -60,25 +60,28 @@ impl AudioOutput {
 				assert!(device != std::ptr::null_mut(), "Device is null");
 			}
 
-			loop {
-				for raw_buffer in rx.recv() {
-					unsafe {
-						ao_play(device, raw_buffer.as_ptr(), raw_buffer.len());
-					}
+			'outer: loop {
+				for op in rx.recv() {
+					match op {
+						Action::Play { raw_buffer } => unsafe {
+								ao_play(device, raw_buffer.as_ptr(), raw_buffer.len());
+						},
+						Action::End() => {break 'outer},
+					};
 				}
-
 			}
+
+			println!("Shutting down audio_output thread");
 
 			unsafe {
 				assert!(ao_close(device) == 1);
 				ao_shutdown();
-			}
+			};
 		});
 	
 		AudioOutput {
 			bits: 16,
 			channels: channels,
-			rate: rate,
 			tx: tx,
 		}
 	}
@@ -96,6 +99,10 @@ impl AudioOutput {
 			raw_buffer[4*i+2] = (sample & 0xff) as i8;
 		}
 
-		self.tx.send(raw_buffer);
+		self.tx.send(Action::Play {raw_buffer}).unwrap();
+	}
+
+	pub fn end(&self) {
+		self.tx.send(Action::End()).unwrap();
 	}
 }

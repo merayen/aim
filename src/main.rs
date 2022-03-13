@@ -45,11 +45,12 @@ fn main() {
 	}
 
 	let ao = audio_output::AudioOutput::new(channels, rate);
-	ao.output(&buffer);
 
-	std::thread::sleep(std::time::Duration::new(5, 0));
 	ao.output(&buffer);
-	std::thread::sleep(std::time::Duration::new(5, 0));
+	std::thread::sleep(std::time::Duration::new(2, 0));
+	ao.output(&buffer);
+	std::thread::sleep(std::time::Duration::new(2, 0));
+	ao.end();
 
 	let mut n = 32i8;
 	for _ in 0..32 {
