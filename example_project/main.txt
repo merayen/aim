@@ -1,0 +1,14 @@
+# project
+name My first music session
+description It makes a sine wave sound forever
+length 60beats
+bpm 120
+
+# sine IDa
+frequency 440
+outIDa
+	inIDb
+
+# out IDb
+volume 50%
+inIDb
