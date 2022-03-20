@@ -6,8 +6,7 @@ bpm 120
 
 # sine IDa
 frequency 440
-outIDa
-	inIDb
+out IDb:in
 
 # out IDb
 volume 50%
