@@ -1,10 +1,10 @@
-struct ParseNode<'a> {
-	id: Option<&'a str>,
-	title: &'a str,
-	properties: std::collections::HashMap<String, &'a str>,
+struct ParseNode {
+	id: Option<String>,
+	title: String,
+	properties: std::collections::HashMap<String, String>,
 }
 
-pub fn parse_module(path: &str) {
+pub fn parse_module(path: &str) -> Vec<ParseNode> {
 	let mut parse_nodes: Vec<ParseNode> = Vec::new();
 
 	let text = std::fs::read_to_string(path).expect(format!("Could not read {path}").as_str());
@@ -14,8 +14,8 @@ pub fn parse_module(path: &str) {
 			splitter.next();
 			
 			parse_nodes.push(ParseNode {
-				title: splitter.next().unwrap(),
-				id: splitter.next().or(None),
+				title: splitter.next().unwrap().to_string(),
+				id: splitter.next().or(Some("".to_string())),
 				properties: std::collections::HashMap::new(),
 			});
 		} else if line.trim().len() > 0 {
@@ -25,11 +25,14 @@ pub fn parse_module(path: &str) {
 
 			p.properties.insert(
 				key.to_string(),
-				splitter.next().or(Some("")).unwrap(),
+				splitter.next().or(Some("".to_string())).unwrap(),
 			);
-			println!("{}({}): {}={}", p.title, p.id.or(Some("")).unwrap(), key, p.properties.get(key).unwrap());
+
+			println!("{}({}): {}={}", p.title, p.id.or(Some("".to_string())).unwrap(), key, p.properties.get(key).unwrap());
 		}
 	}
+
+	parse_nodes
 }
 
 #[cfg(test)]
