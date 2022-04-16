@@ -1,13 +1,25 @@
-# project
-name My first music session
-description It makes a sine wave sound forever
-length 60beats
-bpm 120
+project
+	name My first music session
+	description It makes a sine wave sound forever
+	length 60
+	bpm 120
 
-# sine IDa
-frequency 440
-out IDb:in
+score
+	notes
+		1.1 on a3 80%
+		1.1 on c3 98%
+		1.1 on d#3 80%
+		2.1 off a3 78%
+		2.1 off c3 95%
+		2.1 off d#3 98%
 
-# out IDb
-volume 50%
-inIDb
+sine IDa
+	frequency 440
+	outlet
+		out
+
+out IDb
+	volume 50%
+	port in
+	inlet
+		in IDa_out
