@@ -32,6 +32,24 @@ impl ParseResults {
 
 /// Add a new line, based on previous line
 fn write_line(result: &mut ParseResults, line: &parse::TextLine, text: &str) {
+	result.lines.push(
+		parse::TextLine {
+			text: text.to_string(),
+			line_number: result.lines.len() + 1,
+			indent_level: line.indent_level,
+		}
+	);
+}
+
+/// Forward a line without any modifications
+fn write_forward(result: &mut ParseResults, line: &parse::TextLine) {
+	result.lines.push(
+		parse::TextLine {
+			text: line.text.to_owned(),
+			line_number: result.lines.len() + 1,
+			indent_level: line.indent_level,
+		}
+	);
 }
 
 /// Add a new line, as a child
@@ -54,13 +72,20 @@ fn write_error(result: &mut ParseResults, line: &parse::TextLine, description: &
 	);
 }
 
+fn read_property(line: &parse::TextLine) -> (String, String) {
+	let mut iter = line.text.splitn(2, " ");
+
+	(iter.next().unwrap().to_string(), iter.next().unwrap_or("").to_string())
+}
+
 fn node_sine(result: &mut ParseResults, lines: &mut std::iter::Peekable<std::slice::Iter<parse::TextLine>>) {
 	loop {
 		match &lines.next() {
 			Some(line) => {
-				match line.text.as_str() {
+				let key = line.text.splitn(2, " ").next().unwrap();
+				match key {
 					"frequency" => {
-						println!("{}", "Got frequency");
+						write_forward(result, line);
 					}
 					_ => {
 						write_error(result, line, "Unknown property");
@@ -93,6 +118,7 @@ pub fn parse_module_text(text: &str) -> ParseResults {
 				// Processing a new node
 				match line.text.as_str() {
 					"sine" => {
+						write_forward(&mut result, &line);
 						node_sine(&mut result, &mut lines);
 					}
 					_ => {
@@ -124,7 +150,11 @@ out
 		".trim());
 
 		assert!(result.lines.len() == 4);
-
+		for x in &result.lines {
+			println!("{}", x.text);
+		}
+		assert!(result.lines[0].text == "sine");
+		assert!(result.lines[1].text == "frequency 440");
 		// TODO merayen finish test
 	}
 
@@ -134,6 +164,7 @@ out
 lolwat
 	lolproperty 1337
 ".trim());
+
 		assert!(result.lines.len() == 2);
 
 		// TODO merayen finish test
