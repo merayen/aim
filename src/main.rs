@@ -1,6 +1,7 @@
 //mod audio_output;
 mod nodes;
 mod parse;
+mod parse_nodes;
 mod process;
 
 //use crate::nodes::sine::{SineNode};

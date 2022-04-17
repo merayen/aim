@@ -13,13 +13,11 @@ finally:
 
 print(c)
 
-if c == "q":
+if ord(c) in (3,4,7):
 	exit()
-elif c == "r":
-	os.system("RUST_BACKTRACE=1 cargo run")
-elif c == "t":
-	os.system("RUST_BACKTRACE=1 cargo test")
+
+if c.lower() in "abcdefghijklmnopqrstuvwxyzøæå0123456789 ":
+	os.system(f"bash \"run/{c}.sh\"")
 else:
 	print(f"{c}/{ord(c)}: ¯\_(ツ)_/¯")
-	exit(1)
 '
