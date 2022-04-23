@@ -1,6 +1,7 @@
 //! Parses the specialized files that makes up the node projects
 
 
+#[derive(Debug)]
 pub struct TextLine {
 	pub text: String,
 	pub indent_level: u16,

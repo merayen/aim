@@ -1,7 +1,5 @@
 pub mod sine;
 
-use std::collections::HashMap;
-
 /// All nodes should implement this trait
 pub trait Node {
 	fn process();
