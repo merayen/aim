@@ -1,19 +1,40 @@
 use crate::parse_nodes::{ParseResults, TextConsumer};
-use crate::parse::TextLine;
 
 // TODO merayen move these two methods out
 fn parse_common_node_properties(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
 }
 
+/// Parse the header of a node and return the ID
+///
+/// Example:
+/// ```
+/// sine IDabc
+/// ```
+/// ...would return "IDabc"
 fn parse_node_header(result: &mut ParseResults, text_consumer: &mut TextConsumer) -> Option<String> {
-	//text_consumer.consume(result);  // Consume the node header, "sine IDabc"
-	None
+	let mut header = text_consumer.current().unwrap().text.split(" ");
+
+	// Spool past the name of the node, e.g "sine", "out", as the node is already identified
+	header.next();
+
+	let id = match header.next() {
+		Some(v) => {
+			Some(v.trim().to_string())
+		}
+		None => {
+			None  // TODO merayen No ID yet on this node. It will be added later...? How should we do that? Write back after reading all the nodes?
+		}
+	};
+
+	text_consumer.consume(result);
+
+	id
 }
 
 pub fn parse(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
 	let indent_level = text_consumer.current().unwrap().indent_level + 1;
 
-	text_consumer.consume(result); // TODO merayen let parse_node_header do this instead
+	let id = parse_node_header(result, text_consumer);
 
 	let mut frequency = None;
 
@@ -22,8 +43,7 @@ pub fn parse(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
 		match text_consumer.current() {
 			Some(line) => {
 				if line.indent_level < indent_level {
-					println!("line.indent_level={:?}, indent_level={:?}", line.indent_level, indent_level);
-					break;  // We are done on our level
+					break;  // We are done parsing data on our level
 				}
 
 				let mut key_value = line.text.splitn(2, " ");
