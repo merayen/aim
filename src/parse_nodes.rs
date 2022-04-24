@@ -193,28 +193,31 @@ impl Peeker {
 			}
 		);
 
+		self.index += 1;
+		self.protection = 0;
+
 		// Consume all the indentations below
 		let mut i = 0;
 		loop {
 			i += 1;
-			if i > 100 {panic!("Oh noes 1");}
+			if i > 100 {panic!("Loop protection");}
 			match Peeker::current(self) {
 				PeekerResult::IndentUp(v) | PeekerResult::IndentDown(v) | PeekerResult::IndentSame(v) => {
 					if v.indent_level <= indent_level {
+						println!("consume_with_error Indentation done");
 						break;
 					}
 
 					// Write the line to the output
+					println!("consume_with_error text={}", v.text);
 					Peeker::consume(self, result);
 				}
 				PeekerResult::Done => {
+					println!("consume_with_error Done");
 					break;  // We hit the end
 				}
 			}
 		}
-
-		self.index +=1;
-		self.protection = 0;
 	}
 }
 
@@ -249,6 +252,7 @@ fn parse_node(result: &mut ParseResults, peeker: &mut Peeker) {
 					}
 				}
 				_ => {
+					println!("Node is unknown");
 					peeker.consume_with_error(result, "Unknown node");
 				}
 			}
@@ -319,6 +323,25 @@ out
 		println!("result.lines[2].text={:?}", result.lines[2].text);
 		assert!(result.lines[2].text == "out  # ERROR: Unknown node");
 		assert!(result.lines[3].text == "amplitude 1");
+	}
+
+	#[test]
+	fn consuming_errors() {
+		let parsed: Vec<parse::TextLine> = parse::parse_module("
+a
+	b
+		c
+	d
+e
+		".trim());
+		let mut peeker = Peeker::new(parsed);
+		let mut result = ParseResults::new();
+		peeker.consume_with_error(&mut result, "Not working");
+		assert!(result.lines.len() == 4);
+		assert!(result.lines[0].text == "a  # ERROR: Not working");
+		assert!(result.lines[1].text == "b");
+		assert!(result.lines[2].text == "c");
+		assert!(result.lines[3].text == "d");
 	}
 
 	#[test]
