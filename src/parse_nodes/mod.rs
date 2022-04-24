@@ -6,6 +6,7 @@
 //! ```
 
 use crate::parse;
+mod sine;
 
 /// A node that parses its .txt-file
 trait ParseNode {
@@ -99,7 +100,7 @@ enum PeekerResult<'a> {
 	Done,
 }
 
-struct Peeker {
+pub struct Peeker {
 	lines: Vec<parse::TextLine>,
 	index: usize,
 	indent_level: u16,
@@ -223,27 +224,7 @@ fn parse_node(result: &mut ParseResults, peeker: &mut Peeker) { // TODO probably
 		PeekerResult::IndentSame(title_line) | PeekerResult::IndentUp(title_line) | PeekerResult::IndentSame(title_line) => {
 			match title_line.text.splitn(2, " ").next().unwrap() {
 				"sine" => {
-					peeker.consume(result);  // Consume the node header, "sine IDabc"
-
-					// Parse properties
-					loop {
-						match peeker.current() {
-							PeekerResult::IndentDown(line) | PeekerResult::IndentSame(line) => {
-								match line.text.splitn(2, " ").next().unwrap() {
-									"frequency" => {
-										peeker.consume(result);
-									}
-									_ => {
-										peeker.consume_with_error(result, "Unknown property");
-										println!("Did consume with error");
-									}
-								}
-							}
-							_ => {
-								break;
-							}  // Nothing more for us to process
-						}
-					}
+					sine::parse(result, peeker);
 				}
 				_ => {
 					println!("Node is unknown");
