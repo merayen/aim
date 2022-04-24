@@ -5,13 +5,16 @@
 //!   frequency 440
 //! ```
 
+use std::collections::HashMap;
 use crate::parse;
 use crate::nodes;
+
 
 /// A node that parses its .txt-file
 trait ParseNode {
 	fn parse(lines: Vec<parse::TextLine>);
 }
+
 
 pub struct ParseResults {
 	/// Lines that should replace the content of the module that was parsed.
@@ -20,13 +23,18 @@ pub struct ParseResults {
 
 	/// Errors that are shown in the stdout of the synth
 	errors: Vec<String>,
+
+	/// ProcessNodes configured from the module
+	nodes: HashMap<String, Option<Box<dyn nodes::common::ProcessNode>>>,
 }
 
+
 impl ParseResults {
-	fn new() -> ParseResults {
+	pub fn new() -> ParseResults {
 		ParseResults {
 			lines: Vec::new(),
 			errors: Vec::new(),
+			nodes: HashMap::new(),
 		}
 	}
 
@@ -40,6 +48,7 @@ impl ParseResults {
 	}
 }
 
+
 pub struct TextConsumer {
 	lines: Vec<parse::TextLine>,
 	index: usize,
@@ -47,8 +56,9 @@ pub struct TextConsumer {
 	protection: u32,
 }
 
+
 impl TextConsumer {
-	fn new(lines: Vec<parse::TextLine>) -> TextConsumer {
+	pub fn new(lines: Vec<parse::TextLine>) -> TextConsumer {
 		TextConsumer {
 			lines: lines,
 			indent_level: 0,
@@ -148,17 +158,44 @@ impl TextConsumer {
 	}
 }
 
+
+/// Parse the header of a node and return the ID
+///
+/// Example:
+/// ```
+/// sine IDabc
+/// ```
+/// ...would return "IDabc"
+fn parse_node_header(result: &mut ParseResults, text_consumer: &mut TextConsumer) -> (String, String) {
+	let mut header = text_consumer.current().unwrap().text.split(" ");
+
+	// Spool past the name of the node, e.g "sine", "out", as the node is already identified
+	let name = header.next().unwrap();
+
+	let id = header.next().expect("The node should have an id set by now").trim().to_owned();
+
+	(name.to_string(), id.to_string())
+}
+
+
 fn parse_node(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
 	let title_line = text_consumer.current().unwrap();
 
+	let (name, id) = parse_node_header(result, text_consumer);
+
 	// Figure out which node we should pass the data to
-	match title_line.text.splitn(2, " ").next().unwrap() {
-		"sine" => { nodes::sine::parse(result, text_consumer); }
+	let node = match name.as_str() {
+		"sine" => { nodes::sine::parse(result, text_consumer) }
 		_ => {
 			text_consumer.consume_with_error(result, "Unknown node");
+
+			None
 		}
-	}
+	};
+
+	result.nodes.insert(id, node);
 }
+
 
 /// Parse a module, e.g main.txt, verify, autocomplete and return changed text.
 /// Will return error messages back into the file.

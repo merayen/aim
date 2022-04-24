@@ -10,30 +10,11 @@ fn parse_common_node_property(result: &mut ParseResults, text_consumer: &mut Tex
 	text_consumer.consume_with_error(result, "Unknown property");
 }
 
-/// Parse the header of a node and return the ID
-///
-/// Example:
-/// ```
-/// sine IDabc
-/// ```
-/// ...would return "IDabc"
-fn parse_node_header(result: &mut ParseResults, text_consumer: &mut TextConsumer) -> String {
-	let mut header = text_consumer.current().unwrap().text.split(" ");
-
-	// Spool past the name of the node, e.g "sine", "out", as the node is already identified
-	header.next();
-
-	let id = header.next().expect("The node should have an id set by now").trim().to_owned();
-
-	text_consumer.consume(result);
-
-	id.to_string()
-}
-
-pub fn parse(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
+pub fn parse(result: &mut ParseResults, text_consumer: &mut TextConsumer) -> Option<Box<(dyn ProcessNode + 'static)>> {
 	let indent_level = text_consumer.current().unwrap().indent_level + 1;
 
-	let id = parse_node_header(result, text_consumer);
+	// Consume the node header (e.g "sine id123")
+	text_consumer.consume(result);
 
 	let mut frequency = None;
 
@@ -77,22 +58,29 @@ pub fn parse(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
 			}
 		}
 	}
+
+	Some(
+		Box::new(
+			SineNode {
+				frequency: frequency.unwrap_or(440f32),
+				position: 0f64,
+			}
+		)
+	)
 }
 
-
-
-
-struct Sine {
+pub struct SineNode {
 	frequency: f32,
 	position: f64,
 }
 
-impl ProcessNode for Sine {
-	fn new(env: &ProcessNodeEnvironment) -> (Self, Ports<'static>) {
+impl ProcessNode for SineNode {
+	fn on_init(&mut self, env: &ProcessNodeEnvironment) -> Ports {
 		let mut ports = Ports::new();
-		ports.outlets.insert("out", Outlet::signal(env.buffer_size));
-		//let mut out_lol = out_data.signal.unwrap();
-		(Sine { frequency: 440f32, position: 0f64 }, ports)
+		ports.signal("out", env);
+		ports.inlet("frequency");
+
+		ports
 	}
 	
 	fn process(&mut self, index: usize, node_ports: &mut Vec<Ports>, env: &ProcessNodeEnvironment) {
@@ -107,5 +95,20 @@ impl ProcessNode for Sine {
 		//	signal[i] = 1337f32;
 		//	self.position += frequency / sample_rate * std::f64::consts::PI;
 		//}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	use crate::parse_nodes::parse_module_text;
+
+	#[test]
+	fn create_node_and_process() {
+		let result = parse_module_text("
+sine
+	frequency 100
+		");
 	}
 }

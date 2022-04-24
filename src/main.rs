@@ -2,6 +2,7 @@
 mod nodes;
 mod parse;
 mod parse_nodes;
+mod process;
 
 fn main() {
 	parse::parse_module("example_project/main.txt");

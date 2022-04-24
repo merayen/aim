@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 pub trait ProcessNode {
-	fn new(env: &ProcessNodeEnvironment) -> (Self, Ports<'static>) where Self: Sized;
+	/// Initialize your ports here
+	fn on_init(&mut self, env: &ProcessNodeEnvironment) -> Ports;
+
+	/// Process a frame
 	fn process(&mut self, index: usize, node_ports: &mut Vec<Ports>, env: &ProcessNodeEnvironment);
 }
 
@@ -25,7 +28,7 @@ pub struct Inlet {
 }
 
 impl Outlet {
-	pub fn signal(buffer_size: usize) -> Self {
+	fn signal(buffer_size: usize) -> Self {
 		let mut signal = Vec::with_capacity(buffer_size);
 		for i in 0..buffer_size {
 			signal.push(0f32);
@@ -40,16 +43,26 @@ impl Outlet {
 	// TODO merayen add audio and midi too
 }
 
-pub struct Ports<'a> {
-	pub inlets: HashMap<&'a str, Inlet>,
-	pub outlets: HashMap<&'a str, Outlet>,
+pub struct Ports {
+	pub inlets: HashMap<String, Option<Inlet>>,
+	pub outlets: HashMap<String, Outlet>,
 }
 
-impl Ports<'_> {
-	pub fn new() -> Ports<'static> {
+impl Ports {
+	pub fn new() -> Ports {
 		Ports {
 			inlets: HashMap::new(),
 			outlets: HashMap::new(),
 		}
+	}
+
+	/// Create a new outlet configured to send signals
+	pub fn signal(&mut self, name: &str, env: &ProcessNodeEnvironment) {
+		self.outlets.insert(name.to_string(), Outlet::signal(env.buffer_size));
+	}
+
+	/// Register an inlet
+	pub fn inlet(&mut self, name: &str) {
+		self.inlets.insert(name.to_string(), None);
 	}
 }
