@@ -193,14 +193,11 @@ impl Peeker {
 			}
 		);
 
+		// We have manually added to result.lines, so we go to the next line
 		self.index += 1;
-		self.protection = 0;
 
 		// Consume all the indentations below
-		let mut i = 0;
 		loop {
-			i += 1;
-			if i > 100 {panic!("Loop protection");}
 			match Peeker::current(self) {
 				PeekerResult::IndentUp(v) | PeekerResult::IndentDown(v) | PeekerResult::IndentSame(v) => {
 					if v.indent_level <= indent_level {
@@ -221,7 +218,7 @@ impl Peeker {
 	}
 }
 
-fn parse_node(result: &mut ParseResults, peeker: &mut Peeker) {
+fn parse_node(result: &mut ParseResults, peeker: &mut Peeker) { // TODO probably move the nodes out somewhere
 	match peeker.current() {
 		PeekerResult::IndentSame(title_line) | PeekerResult::IndentUp(title_line) | PeekerResult::IndentSame(title_line) => {
 			match title_line.text.splitn(2, " ").next().unwrap() {
@@ -229,10 +226,7 @@ fn parse_node(result: &mut ParseResults, peeker: &mut Peeker) {
 					peeker.consume(result);  // Consume the node header, "sine IDabc"
 
 					// Parse properties
-					let mut i = 0;
 					loop {
-						i += 1;
-						if i > 100 {panic!("Oh noes 2");}
 						match peeker.current() {
 							PeekerResult::IndentDown(line) | PeekerResult::IndentSame(line) => {
 								match line.text.splitn(2, " ").next().unwrap() {
@@ -273,10 +267,7 @@ pub fn parse_module_text(text: &str) -> ParseResults {
 
 	let mut result = ParseResults::new();
 
-	let mut i = 0;
 	loop {
-		i += 1;
-		if i > 100 {panic!("Oh noes 3");}
 		match peeker.current() {
 			PeekerResult::IndentSame(line) | PeekerResult::IndentDown(line) | PeekerResult::IndentUp(line) => {
 				if line.indent_level > 0 {
