@@ -31,43 +31,6 @@ impl ParseResults {
 	}
 }
 
-/// Add a new line, based on previous line
-fn write_line(result: &mut ParseResults, line: &parse::TextLine, text: &str) {
-	result.lines.push(
-		parse::TextLine {
-			text: text.to_string(),
-			line_number: result.lines.len() + 1,
-			indent_level: line.indent_level,
-		}
-	);
-}
-
-/// Forward a line without any modifications
-fn write_forward(result: &mut ParseResults, line: &parse::TextLine) {
-	result.lines.push(
-		parse::TextLine {
-			text: line.text.to_owned(),
-			line_number: result.lines.len() + 1,
-			indent_level: line.indent_level,
-		}
-	);
-}
-
-/// Add a new line, as a child
-fn write_child_line(result: &mut ParseResults, line: &parse::TextLine, text: &str) {
-	result.lines.push(parse::TextLine {
-		text: text.to_string(),
-		line_number: result.lines.len() + 1,
-		indent_level: line.indent_level + 1,
-	});
-}
-
-fn read_property(line: &parse::TextLine) -> (String, String) {
-	let mut iter = line.text.splitn(2, " ");
-
-	(iter.next().unwrap().to_string(), iter.next().unwrap_or("").to_string())
-}
-
 pub struct TextConsumer {
 	lines: Vec<parse::TextLine>,
 	index: usize,
@@ -97,9 +60,7 @@ impl TextConsumer {
 			return None;
 		}
 
-		let line = &self.lines[self.index];
-
-		Some(&line)
+		Some(&self.lines[self.index])
 	}
 
 	/// Consume current line
@@ -173,19 +134,14 @@ impl TextConsumer {
 	}
 }
 
-fn parse_node(result: &mut ParseResults, text_consumer: &mut TextConsumer) { // TODO probably move the nodes out somewhere
-	match text_consumer.current() {
-		Some(title_line) => {
-			match title_line.text.splitn(2, " ").next().unwrap() {
-				"sine" => {
-					sine::parse(result, text_consumer);
-				}
-				_ => {
-					text_consumer.consume_with_error(result, "Unknown node");
-				}
-			}
-		}
-		None => {
+fn parse_node(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
+	let title_line = text_consumer.current().unwrap();
+
+	// Figure out which node we should pass the data to
+	match title_line.text.splitn(2, " ").next().unwrap() {
+		"sine" => { sine::parse(result, text_consumer); }
+		_ => {
+			text_consumer.consume_with_error(result, "Unknown node");
 		}
 	}
 }
@@ -206,6 +162,7 @@ pub fn parse_module_text(text: &str) -> ParseResults {
 				}
 
 				parse_node(&mut result, &mut text_consumer);
+				println!("{}", text_consumer.index);
 			}
 			None => {
 				break;

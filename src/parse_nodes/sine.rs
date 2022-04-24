@@ -13,6 +13,7 @@ fn parse_node_header(result: &mut ParseResults, text_consumer: &mut TextConsumer
 pub fn parse(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
 	let indent_level = text_consumer.current().unwrap().indent_level + 1;
 
+	text_consumer.consume(result); // TODO merayen let parse_node_header do this instead
 
 	let mut frequency = None;
 
@@ -21,6 +22,7 @@ pub fn parse(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
 		match text_consumer.current() {
 			Some(line) => {
 				if line.indent_level < indent_level {
+					println!("line.indent_level={:?}, indent_level={:?}", line.indent_level, indent_level);
 					break;  // We are done on our level
 				}
 
