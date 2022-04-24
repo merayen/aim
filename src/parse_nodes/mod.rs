@@ -162,8 +162,9 @@ fn parse_node(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
 
 /// Parse a module, e.g main.txt, verify, autocomplete and return changed text.
 /// Will return error messages back into the file.
-pub fn parse_module_text(text: &str) -> ParseResults {
-	let parsed: Vec<parse::TextLine> = parse::parse_module(text);
+pub fn parse_module_text(raw_text: &str) -> ParseResults {
+	let text = initialize_nodes(raw_text);
+	let parsed: Vec<parse::TextLine> = parse::parse_module(&text);
 	let mut text_consumer = TextConsumer::new(parsed);
 
 	let mut result = ParseResults::new();
@@ -237,6 +238,9 @@ fn get_highest_id(ids: Vec<String>) -> u32 {
 }
 
 
+/// Do the first pass of the module text
+///
+/// This assigns a new ID to all the nodes that does not have that already.
 fn initialize_nodes(text: &str) -> String {
 	let mut next_id = get_highest_id(get_all_node_ids(text)) + 1;
 
@@ -325,9 +329,9 @@ e id9
 	#[test]
 	fn parsing_text() {
 		let result = parse_module_text("
-sine
+sine id0
 	frequency 440
-out
+out id1
 	amplitude 1
 		".trim());
 
@@ -337,9 +341,9 @@ out
 		assert!(result.lines[1].indent_level == 1);
 		assert!(result.lines[2].indent_level == 0);
 		assert!(result.lines[3].indent_level == 1);
-		assert!(result.lines[0].text == "sine");
+		assert!(result.lines[0].text == "sine id0");
 		assert!(result.lines[1].text == "frequency 440");
-		assert!(result.lines[2].text == "out  # ERROR: Unknown node");
+		assert!(result.lines[2].text == "out id1  # ERROR: Unknown node");
 		assert!(result.lines[3].text == "amplitude 1");
 	}
 
@@ -369,26 +373,26 @@ e
 	#[test]
 	fn unknown_node() {
 		let result = parse_module_text("
-lolwat
+lolwat id0
 	lolproperty 1337
 ".trim());
 
 		assert!(result.lines.len() == 2);
 		assert!(result.lines[0].indent_level == 0);
 		assert!(result.lines[1].indent_level == 1);
-		assert!(result.lines[0].text == "lolwat  # ERROR: Unknown node");
+		assert!(result.lines[0].text == "lolwat id0  # ERROR: Unknown node");
 		assert!(result.lines[1].text == "lolproperty 1337");
 	}
 
 	#[test]
 	fn sine_unknown_property() {
 		let result = parse_module_text("
-sine
+sine id0
 	lolproperty 1337
 		".trim());
 
 		assert!(result.lines.len() == 2);
-		assert!(result.lines[0].text == "sine");
+		assert!(result.lines[0].text == "sine id0");
 		assert!(result.lines[1].text == "lolproperty 1337  # ERROR: Unknown property");
 	}
 }

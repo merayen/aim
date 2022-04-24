@@ -6,7 +6,7 @@ Make music in terminal without boss knowing.
 
 ## How
 - Use vim
-    - Or Notepad.exe, whatever makes your boat fly
+	- Or Notepad.exe, whatever makes your boat fly
 	- A text editor is all you need
 
 ## Status
@@ -62,7 +62,7 @@ Then you connect "sine" node to "out" node by altering line 4:
 
 ```
 …
-    out id1:in
+		out id1:in
 …
 ```
 
@@ -106,7 +106,7 @@ Errors are shown as hints in the stdout from the `aim` command and written into 
 ```
 $ cat main.txt
 sine
-  frequency 440
+	frequency 440
 	non-existing property
 
 $ aim
@@ -114,7 +114,7 @@ main.txt:3: ERROR: Unknown property
 
 $ cat main.txt
 sine
-  frequency 440
+	frequency 440
 	non-existing property  # ERROR: Unknown property
 ```
 

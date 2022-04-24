@@ -1,7 +1,11 @@
 use crate::parse_nodes::{ParseResults, TextConsumer};
 
 // TODO merayen move these two methods out
-fn parse_common_node_properties(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
+/// Parse common property or write an error about them if unknown
+///
+/// These are usually inlets and outlets. Run this if your node doesn't match any.
+fn parse_common_node_property(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
+	text_consumer.consume_with_error(result, "Unknown property");
 }
 
 /// Parse the header of a node and return the ID
@@ -11,24 +15,17 @@ fn parse_common_node_properties(result: &mut ParseResults, text_consumer: &mut T
 /// sine IDabc
 /// ```
 /// ...would return "IDabc"
-fn parse_node_header(result: &mut ParseResults, text_consumer: &mut TextConsumer) -> Option<String> {
+fn parse_node_header(result: &mut ParseResults, text_consumer: &mut TextConsumer) -> String {
 	let mut header = text_consumer.current().unwrap().text.split(" ");
 
 	// Spool past the name of the node, e.g "sine", "out", as the node is already identified
 	header.next();
 
-	let id = match header.next() {
-		Some(v) => {
-			Some(v.trim().to_string())
-		}
-		None => {
-			None  // TODO merayen No ID yet on this node. It will be added later...? How should we do that? Write back after reading all the nodes?
-		}
-	};
+	let id = header.next().expect("The node should have an id set by now").trim().to_owned();
 
 	text_consumer.consume(result);
 
-	id
+	id.to_string()
 }
 
 pub fn parse(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
@@ -69,7 +66,7 @@ pub fn parse(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
 						}
 					}
 					_ => {
-						text_consumer.consume_with_error(result, "Unknown property");
+						parse_common_node_property(result, text_consumer);
 					}
 				}
 			}
