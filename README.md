@@ -10,7 +10,7 @@ Make music in terminal without boss knowing.
 	- A text editor is all you need
 
 ## Status
-Not much yet. 
+Not much yet. It can parse files and output errors into them.
 
 ## What
 - Node based
@@ -99,6 +99,26 @@ Press CTRL-C to stop playback
 ```
 
 The synth plays the sine wave sound and removes the `<play` line you wrote. This is how you send commands to the synth, inside the text files.
+
+### Errors
+Errors are shown as hints in the stdout from the `aim` command and written into the module files themselves. Example error from a bad module file:
+
+```
+$ cat main.txt
+sine
+  frequency 440
+	non-existing property
+
+$ aim
+main.txt:3: ERROR: Unknown property
+
+$ cat main.txt
+sine
+  frequency 440
+	non-existing property  # ERROR: Unknown property
+```
+
+The errors from `aim` can be retrieved directly into vim's quickfix list by running: `:cex system("aim")` inside vim.
 
 ## Technical rules
 - All modules (e.g main.txt) has their own ID namespace
