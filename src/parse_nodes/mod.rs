@@ -221,7 +221,7 @@ impl Peeker {
 
 fn parse_node(result: &mut ParseResults, peeker: &mut Peeker) { // TODO probably move the nodes out somewhere
 	match peeker.current() {
-		PeekerResult::IndentSame(title_line) | PeekerResult::IndentUp(title_line) | PeekerResult::IndentSame(title_line) => {
+		PeekerResult::IndentSame(title_line) | PeekerResult::IndentUp(title_line) => {
 			match title_line.text.splitn(2, " ").next().unwrap() {
 				"sine" => {
 					sine::parse(result, peeker);
