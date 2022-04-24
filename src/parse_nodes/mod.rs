@@ -68,38 +68,6 @@ fn read_property(line: &parse::TextLine) -> (String, String) {
 	(iter.next().unwrap().to_string(), iter.next().unwrap_or("").to_string())
 }
 
-#[derive(Debug)]
-enum PeekerResult<'a> {
-	/// Next indentation if deeper
-	/// E.g:
-	/// ```
-	/// a
-	/// 	b  # Our current position
-	/// ```
-	IndentDown(&'a parse::TextLine),
-
-	/// Next indentation is higher.
-	/// E.g:
-	/// ```
-	/// a
-	/// 	b
-	/// c  # Our current position
-	/// ```
-	IndentUp(&'a parse::TextLine),
-
-	/// Next line is on the same indentation.
-	/// E.g:
-	/// ```
-	/// a
-	/// 	b
-	/// 	c  # Our current position
-	/// ```
-	IndentSame(&'a parse::TextLine),
-
-	/// There are no items left.
-	Done,
-}
-
 pub struct Peeker {
 	lines: Vec<parse::TextLine>,
 	index: usize,
@@ -118,7 +86,7 @@ impl Peeker {
 	}
 
 	/// Get the current line
-	fn current(&mut self) -> PeekerResult {
+	fn current(&mut self) -> Option<&parse::TextLine> {
 		if self.protection > 1000 {
 			panic!("Stuck? current() called many times without consumption");
 		}
@@ -126,23 +94,12 @@ impl Peeker {
 		self.protection += 1;
 
 		if self.index >= self.lines.len() {
-			return PeekerResult::Done;
+			return None;
 		}
 
 		let line = &self.lines[self.index];
 
-		if line.indent_level < self.indent_level {
-			return PeekerResult::IndentUp(&line);
-		}
-		else if line.indent_level == self.indent_level {
-			return PeekerResult::IndentSame(&line);
-		}
-		else if line.indent_level > self.indent_level {
-			return PeekerResult::IndentDown(&line);
-		}
-		else {
-			panic!("Should not happen");
-		}
+		Some(&line)
 	}
 
 	/// Consume current line
@@ -176,10 +133,10 @@ impl Peeker {
 
 		// Get the current indentation level
 		let line = match Peeker::current(self) {
-			PeekerResult::IndentDown(line) | PeekerResult::IndentUp(line) | PeekerResult::IndentSame(line) => {
+			Some(line) => {
 				line
 			}
-			PeekerResult::Done => {
+			None => {
 				panic!("Nothing to consume");
 			}
 		};
@@ -200,18 +157,15 @@ impl Peeker {
 		// Consume all the indentations below
 		loop {
 			match Peeker::current(self) {
-				PeekerResult::IndentUp(v) | PeekerResult::IndentDown(v) | PeekerResult::IndentSame(v) => {
+				Some(v) => {
 					if v.indent_level <= indent_level {
-						println!("consume_with_error Indentation done");
 						break;
 					}
 
 					// Write the line to the output
-					println!("consume_with_error text={}", v.text);
 					Peeker::consume(self, result);
 				}
-				PeekerResult::Done => {
-					println!("consume_with_error Done");
+				None => {
 					break;  // We hit the end
 				}
 			}
@@ -221,21 +175,17 @@ impl Peeker {
 
 fn parse_node(result: &mut ParseResults, peeker: &mut Peeker) { // TODO probably move the nodes out somewhere
 	match peeker.current() {
-		PeekerResult::IndentSame(title_line) | PeekerResult::IndentUp(title_line) => {
+		Some(title_line) => {
 			match title_line.text.splitn(2, " ").next().unwrap() {
 				"sine" => {
 					sine::parse(result, peeker);
 				}
 				_ => {
-					println!("Node is unknown");
 					peeker.consume_with_error(result, "Unknown node");
 				}
 			}
 		}
-		PeekerResult::IndentDown(line) => {
-			panic!("Should not happen");
-		}
-		PeekerResult::Done => {
+		None => {
 		}
 	}
 }
@@ -250,14 +200,14 @@ pub fn parse_module_text(text: &str) -> ParseResults {
 
 	loop {
 		match peeker.current() {
-			PeekerResult::IndentSame(line) | PeekerResult::IndentDown(line) | PeekerResult::IndentUp(line) => {
+			Some(line) => {
 				if line.indent_level > 0 {
 					panic!("Node did not consume all its data? At index: {}, text: {}", peeker.index, peeker.lines[peeker.index].text);
 				}
 
 				parse_node(&mut result, &mut peeker);
 			}
-			PeekerResult::Done => {
+			None => {
 				break;
 			}
 		}
