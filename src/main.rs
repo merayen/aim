@@ -3,8 +3,8 @@ mod nodes;
 mod parse;
 mod parse_nodes;
 mod process;
+mod project;
 
 fn main() {
-	parse::parse_module("example_project/main.txt");
-	//process::test_process();
+	
 }
