@@ -372,7 +372,7 @@ out id1
 	amplitude 1
 		".trim());
 
-		assert!(result.lines.len() == 4);
+		assert!(result.nodes.len() == 2);
 		assert!(result.lines.len() == 4);
 		assert!(result.lines[0].indent_level == 0);
 		assert!(result.lines[1].indent_level == 1);
@@ -414,6 +414,7 @@ lolwat id0
 	lolproperty 1337
 ".trim());
 
+		assert!(result.nodes.len() == 1);
 		assert!(result.lines.len() == 2);
 		assert!(result.lines[0].indent_level == 0);
 		assert!(result.lines[1].indent_level == 1);
@@ -428,6 +429,7 @@ sine id0
 	lolproperty 1337
 		".trim());
 
+		assert!(result.nodes.len() == 1);
 		assert!(result.lines.len() == 2);
 		assert!(result.lines[0].text == "sine id0");
 		assert!(result.lines[1].text == "lolproperty 1337  # ERROR: Unknown property");
