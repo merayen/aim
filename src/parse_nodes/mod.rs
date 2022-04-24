@@ -68,16 +68,16 @@ fn read_property(line: &parse::TextLine) -> (String, String) {
 	(iter.next().unwrap().to_string(), iter.next().unwrap_or("").to_string())
 }
 
-pub struct Peeker {
+pub struct TextConsumer {
 	lines: Vec<parse::TextLine>,
 	index: usize,
 	indent_level: u16,
 	protection: u32,
 }
 
-impl Peeker {
-	fn new(lines: Vec<parse::TextLine>) -> Peeker {
-		Peeker {
+impl TextConsumer {
+	fn new(lines: Vec<parse::TextLine>) -> TextConsumer {
+		TextConsumer {
 			lines: lines,
 			indent_level: 0,
 			index: 0,
@@ -105,7 +105,7 @@ impl Peeker {
 	/// Consume current line
 	fn consume(&mut self, result: &mut ParseResults) {
 		if self.index >= self.lines.len() {
-			panic!("Peeker is already consumed");
+			panic!("TextConsumer is already consumed");
 		}
 
 		self.protection = 0;
@@ -132,7 +132,7 @@ impl Peeker {
 		self.protection = 0;
 
 		// Get the current indentation level
-		let line = match Peeker::current(self) {
+		let line = match TextConsumer::current(self) {
 			Some(line) => {
 				line
 			}
@@ -156,14 +156,14 @@ impl Peeker {
 
 		// Consume all the indentations below
 		loop {
-			match Peeker::current(self) {
+			match TextConsumer::current(self) {
 				Some(v) => {
 					if v.indent_level <= indent_level {
 						break;
 					}
 
 					// Write the line to the output
-					Peeker::consume(self, result);
+					TextConsumer::consume(self, result);
 				}
 				None => {
 					break;  // We hit the end
@@ -173,15 +173,15 @@ impl Peeker {
 	}
 }
 
-fn parse_node(result: &mut ParseResults, peeker: &mut Peeker) { // TODO probably move the nodes out somewhere
-	match peeker.current() {
+fn parse_node(result: &mut ParseResults, text_consumer: &mut TextConsumer) { // TODO probably move the nodes out somewhere
+	match text_consumer.current() {
 		Some(title_line) => {
 			match title_line.text.splitn(2, " ").next().unwrap() {
 				"sine" => {
-					sine::parse(result, peeker);
+					sine::parse(result, text_consumer);
 				}
 				_ => {
-					peeker.consume_with_error(result, "Unknown node");
+					text_consumer.consume_with_error(result, "Unknown node");
 				}
 			}
 		}
@@ -194,18 +194,18 @@ fn parse_node(result: &mut ParseResults, peeker: &mut Peeker) { // TODO probably
 /// Will return error messages back into the file.
 pub fn parse_module_text(text: &str) -> ParseResults {
 	let parsed: Vec<parse::TextLine> = parse::parse_module(text);
-	let mut peeker = Peeker::new(parsed);
+	let mut text_consumer = TextConsumer::new(parsed);
 
 	let mut result = ParseResults::new();
 
 	loop {
-		match peeker.current() {
+		match text_consumer.current() {
 			Some(line) => {
 				if line.indent_level > 0 {
-					panic!("Node did not consume all its data? At index: {}, text: {}", peeker.index, peeker.lines[peeker.index].text);
+					panic!("Node did not consume all its data? At index: {}, text: {}", text_consumer.index, text_consumer.lines[text_consumer.index].text);
 				}
 
-				parse_node(&mut result, &mut peeker);
+				parse_node(&mut result, &mut text_consumer);
 			}
 			None => {
 				break;
@@ -256,9 +256,9 @@ a
 	d
 e
 		".trim());
-		let mut peeker = Peeker::new(parsed);
+		let mut text_consumer = TextConsumer::new(parsed);
 		let mut result = ParseResults::new();
-		peeker.consume_with_error(&mut result, "Not working");
+		text_consumer.consume_with_error(&mut result, "Not working");
 		assert!(result.lines.len() == 4);
 		assert!(result.lines[0].text == "a  # ERROR: Not working");
 		assert!(result.lines[1].text == "b");
