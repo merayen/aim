@@ -25,7 +25,15 @@ Not much yet.
 ## Examples
 
 ### Simple module
-You start writing a new module from scratch:
+Create a new project:
+
+```
+$ mkdir my_song
+$ cd my_song
+$ vi main.txt
+```
+
+You start writing a new module from scratch, adding two nodes:
 
 ```
 sine
@@ -34,11 +42,11 @@ out
 
 Then you run the synth that is in the same path as the music project:
 
-```sh
+```
 $ aim
 ```
 
-Synth automatically completes the file and returns:
+Synth automatically changes the file so it looks like this:
 
 ```
 sine id0
@@ -59,11 +67,11 @@ Then you connect "sine" node to "out" node by altering line 4:
 ```
 
 Run the synth again:
-```sh
+```
 $ aim
 ```
 
-And end up with this result that would play a 440Hz sine wave to the speakers:
+And the file gets changed again:
 
 ```
 sine id0
@@ -76,10 +84,18 @@ out id1
 ```
 
 Play the project and listen to the sine wave by adding a new line somewhere (doesn't matter which line):
+
 ```
 …
 <play
 …
+```
+
+and run synth again:
+
+```
+$ aim
+Press CTRL-C to stop playback
 ```
 
 The synth plays the sine wave sound and removes the `<play` line you wrote. This is how you send commands to the synth, inside the text files.
