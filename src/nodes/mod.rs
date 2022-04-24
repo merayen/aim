@@ -1,4 +1,5 @@
 pub mod sine;
+pub mod common;
 
 /// All nodes should implement this trait
 pub trait Node {

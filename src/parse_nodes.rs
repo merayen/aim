@@ -6,7 +6,7 @@
 //! ```
 
 use crate::parse;
-mod sine;
+use crate::nodes;
 
 /// A node that parses its .txt-file
 trait ParseNode {
@@ -58,7 +58,7 @@ impl TextConsumer {
 	}
 
 	/// Get the current line
-	fn current(&mut self) -> Option<&parse::TextLine> {
+	pub fn current(&mut self) -> Option<&parse::TextLine> {
 		if self.protection > 1000 {
 			panic!("Stuck? current() called many times without consumption");
 		}
@@ -72,13 +72,13 @@ impl TextConsumer {
 		Some(&self.lines[self.index])
 	}
 
-	fn skip(&mut self) {
+	pub fn skip(&mut self) {
 		self.protection = 0;
 		self.index += 1;
 	}
 
 	/// Consume current line
-	fn consume(&mut self, result: &mut ParseResults) {
+	pub fn consume(&mut self, result: &mut ParseResults) {
 		if self.index >= self.lines.len() {
 			panic!("TextConsumer is already consumed");
 		}
@@ -103,7 +103,7 @@ impl TextConsumer {
 	}
 
 	/// Consume current line and its children. Adds an error message to the first line.
-	fn consume_with_error(&mut self, result: &mut ParseResults, error_message: &str) {
+	pub fn consume_with_error(&mut self, result: &mut ParseResults, error_message: &str) {
 		self.protection = 0;
 
 		// Get the current indentation level
@@ -153,7 +153,7 @@ fn parse_node(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
 
 	// Figure out which node we should pass the data to
 	match title_line.text.splitn(2, " ").next().unwrap() {
-		"sine" => { sine::parse(result, text_consumer); }
+		"sine" => { nodes::sine::parse(result, text_consumer); }
 		_ => {
 			text_consumer.consume_with_error(result, "Unknown node");
 		}
