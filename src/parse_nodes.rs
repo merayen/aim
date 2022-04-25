@@ -19,13 +19,13 @@ trait ParseNode {
 pub struct ParseResults {
 	/// Lines that should replace the content of the module that was parsed.
 	/// These lines will contain errors too, as comments.
-	lines: Vec<parse::TextLine>,
+	pub lines: Vec<parse::TextLine>,
 
 	/// Errors that are shown in the stdout of the synth
-	errors: Vec<String>,
+	pub errors: Vec<String>,
 
 	/// ProcessNodes configured from the module
-	nodes: HashMap<String, Option<Box<dyn nodes::common::ProcessNode>>>,
+	pub nodes: HashMap<String, Option<Box<dyn nodes::common::ProcessNode>>>,
 }
 
 
@@ -193,6 +193,7 @@ fn parse_node(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
 		}
 	};
 
+	assert!(!result.nodes.contains_key(&id), "ID {} has already been used", id);
 	result.nodes.insert(id, node);
 }
 
@@ -304,6 +305,8 @@ fn initialize_nodes(text: &str) -> String {
 									line_number: result.lines.len() + 1,
 								}
 							);
+
+							next_id += 1;
 
 							text_consumer.skip();  // As we have written the line above manually
 						}
