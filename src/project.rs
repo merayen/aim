@@ -2,6 +2,8 @@
 
 use std::collections::HashMap;
 use crate::parse_nodes::{parse_module_text, ParseResults};
+use crate::process::{init_nodes, process_frame};
+use crate::nodes::common::{ProcessNode, ProcessNodeEnvironment};
 
 /// Parse a complete project and all its modules
 ///
@@ -34,14 +36,27 @@ fn parse_project() -> Result<HashMap<String, ParseResults>, String> {
 
 /// Parse project and execute any commands inside the project
 pub fn begin() {
-	let modules = parse_project().expect("Could not parse project");
+	let mut modules = parse_project().expect("Could not parse project");
 
 	// Print errors that came up
-	for (filename, module) in modules {
+	for (filename, module) in &modules {
 		for error in &module.errors {
 			println!("{}", error);
 		}
 	}
+
+	assert!(modules.len() == 1, "Only support 1 module for now");
+
+	let parse_results: &mut ParseResults = modules.values_mut().next().unwrap();
+	let nodes = &mut parse_results.nodes;
+
+	let env = ProcessNodeEnvironment { // TODO merayen move out
+		buffer_size: 8,
+		sample_rate: 44100,
+	};
+
+	let mut ports = init_nodes(&env, nodes);
+	process_frame(&env, nodes, &mut ports);
 	// TODO merayen send the nodes to something that process them?
 }
 

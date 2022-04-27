@@ -28,6 +28,23 @@ pub struct ParseResults {
 	pub nodes: HashMap<String, Option<Box<dyn nodes::common::ProcessNode>>>,
 }
 
+pub struct Command { // TODO merayen should we use < or [? Should commands and properties have different characters?
+	/// The command text excluding the `<` and `>` sign
+	pub text: String,
+
+	/// Line number in the text file being parsed
+	pub line_number: usize,
+
+	/// x-offset
+	pub offset: usize,
+}
+
+pub fn parse_commands(text: &str) -> Vec<Command> {
+	let mut result: Vec<Command> = Vec::new();
+
+	result
+}
+
 
 impl ParseResults {
 	pub fn new() -> ParseResults {

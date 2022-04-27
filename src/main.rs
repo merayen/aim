@@ -6,5 +6,5 @@ mod process;
 mod project;
 
 fn main() {
-	
+	project::begin();
 }

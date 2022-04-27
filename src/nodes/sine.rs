@@ -83,7 +83,7 @@ impl ProcessNode for SineNode {
 		ports
 	}
 	
-	fn process(&mut self, index: usize, node_ports: &mut Vec<Ports>, env: &ProcessNodeEnvironment) {
+	fn process(&mut self, env: &ProcessNodeEnvironment, ports: &mut Ports) {
 		//let mut out = ports.outlets.get_mut("out");
 		//let mut out_data = out.as_mut().unwrap();
 		//let mut signal = out_data.signal.as_mut().unwrap();
