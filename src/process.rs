@@ -31,6 +31,7 @@ pub fn init_nodes(env: &ProcessNodeEnvironment, nodes: &mut HashMap<String, Opti
 /// Execute all the nodes in a module.
 pub fn process_frame(env: &ProcessNodeEnvironment, nodes: &mut HashMap<String, Option<Box<dyn ProcessNode>>>, ports: &mut HashMap<String, Ports>) {
 	for (id, node) in nodes.iter_mut() {
+		// TODO merayen need correct execution order here
 		match node {
 			Some(process_node) => {
 				process_node.process(env, &mut ports.get_mut(id).expect("ProcessNode does not have its Ports initialized. Forgotton init_nodes()?"));

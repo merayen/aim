@@ -14,9 +14,9 @@ pub struct ProcessNodeEnvironment {
 }
 
 pub struct Outlet {
-	audio: Option<Vec<Vec<f32>>>,
-	signal: Option<Vec<f32>>,
-	midi: Option<Vec<u8>>,
+	pub audio: Option<Vec<Vec<f32>>>,
+	pub signal: Option<Vec<f32>>,
+	pub midi: Option<Vec<u8>>,
 }
 
 pub struct Inlet {

@@ -8,21 +8,20 @@ use crate::nodes::common::{ProcessNode, ProcessNodeEnvironment};
 /// Parse a complete project and all its modules
 ///
 /// Its result can then be sent to the processing/DSP stage of the synth.
-fn parse_project() -> Result<HashMap<String, ParseResults>, String> {
+fn parse_project(path: &str) -> Result<HashMap<String, ParseResults>, String> {
 	let mut modules: HashMap<String, ParseResults> = HashMap::new();
-	match std::fs::read_dir("./") {
+	match std::fs::read_dir(path) {
 		Ok(paths) => {
 			for x in paths {
 				let path = x.unwrap().path();
 				let filename = path.to_str().unwrap();
-				assert!(filename.starts_with("./"));
 
 				if filename.ends_with(".txt") {
 					println!("Parsing module {}", filename);
 					let stuff = std::fs::read_to_string(filename).unwrap();
 					let module: ParseResults = parse_module_text(stuff.as_str());
 
-					modules.insert(filename[2..filename.len()].to_string(), module);
+					modules.insert(filename.to_string(), module);
 				}
 			}
 
@@ -35,8 +34,8 @@ fn parse_project() -> Result<HashMap<String, ParseResults>, String> {
 }
 
 /// Parse project and execute any commands inside the project
-pub fn begin() {
-	let mut modules = parse_project().expect("Could not parse project");
+pub fn run(path: &str) {
+	let mut modules = parse_project(path).expect("Could not parse project");
 
 	// Print errors that came up
 	for (filename, module) in &modules {
@@ -56,7 +55,11 @@ pub fn begin() {
 	};
 
 	let mut ports = init_nodes(&env, nodes);
-	process_frame(&env, nodes, &mut ports);
+
+	loop {
+		// CTRL-C this
+		process_frame(&env, nodes, &mut ports);
+	}
 	// TODO merayen send the nodes to something that process them?
 }
 
@@ -66,21 +69,23 @@ mod tests {
 
 	#[test]
 	fn parsing_example_project() {
-		std::env::set_current_dir("example_project").expect("Could not cd into example_project/");
-		let modules = parse_project().unwrap();
+		let modules = parse_project("example_project/").unwrap();
 
 		assert!(modules.len() == 1);
-		assert!(modules.contains_key("main.txt"));
+		assert!(modules.contains_key("example_project/main.txt"));
 
-		for x in &modules["main.txt"].lines {
+		for x in &modules["example_project/main.txt"].lines {
 			if x.indent_level == 0 {
 				println!("{}", x.text);
 			}
 		}
 
-		println!("{}", modules["main.txt"].nodes.len());
-		assert!(modules["main.txt"].nodes.len() == 4);
+		println!("{}", modules["example_project/main.txt"].nodes.len());
+		assert!(modules["example_project/main.txt"].nodes.len() == 4);
+	}
 
-		std::env::set_current_dir("..").expect("Could not cd back with ../");
+	#[test]
+	fn run_project() {  // TODO merayen remove this
+		run("example_project");
 	}
 }

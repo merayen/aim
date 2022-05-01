@@ -84,17 +84,17 @@ impl ProcessNode for SineNode {
 	}
 	
 	fn process(&mut self, env: &ProcessNodeEnvironment, ports: &mut Ports) {
-		//let mut out = ports.outlets.get_mut("out");
-		//let mut out_data = out.as_mut().unwrap();
-		//let mut signal = out_data.signal.as_mut().unwrap();
+		let mut out = ports.outlets.get_mut("out");
+		let mut out_data = out.as_mut().unwrap();
+		let mut signal = out_data.signal.as_mut().unwrap();
 
-		//let sample_rate = env.sample_rate as f64;
-		//let frequency = self.frequency as f64;
+		let sample_rate = env.sample_rate as f64;
+		let frequency = self.frequency as f64;
 
-		//for i in 0..env.buffer_size {
-		//	signal[i] = 1337f32;
-		//	self.position += frequency / sample_rate * std::f64::consts::PI;
-		//}
+		for i in 0..env.buffer_size {
+			signal[i] = 1337f32;
+			self.position += frequency / sample_rate * std::f64::consts::PI;
+		}
 	}
 }
 
