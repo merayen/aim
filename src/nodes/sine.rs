@@ -102,13 +102,23 @@ impl ProcessNode for SineNode {
 mod tests {
 	use super::*;
 
-	use crate::parse_nodes::parse_module_text;
+	use crate::project;
 
 	#[test]
 	fn create_node_and_process() {
-		let result = parse_module_text("
+		let parse_results: ParseResults = project::run_single_module("
 sine
 	frequency 100
 		");
+
+
+		for x in &parse_results.lines {
+			println!("{}", x.text);
+		}
+
+		assert!(parse_results.lines[0].text == "sine id1");
+		assert!(parse_results.lines[1].text == "frequency 100");
+		assert!(parse_results.lines[2].text == "inlets");
+		assert!(parse_results.lines[3].text == "outlets");
 	}
 }

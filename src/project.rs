@@ -3,7 +3,8 @@
 use std::collections::HashMap;
 use crate::parse_nodes::{parse_module_text, ParseResults};
 use crate::process::{init_nodes, process_frame};
-use crate::nodes::common::{ProcessNode, ProcessNodeEnvironment};
+use crate::nodes::common::{ProcessNode, ProcessNodeEnvironment, Ports};
+
 
 /// Parse a complete project and all its modules
 ///
@@ -33,7 +34,10 @@ fn parse_project(path: &str) -> Result<HashMap<String, ParseResults>, String> {
 	}
 }
 
-/// Parse project and execute any commands inside the project
+
+/// Parse project and execute any commands and then run it
+///
+/// * `frame_count` - How many frames to process. Below 0 means "infinite"
 pub fn run(path: &str) {
 	let mut modules = parse_project(path).expect("Could not parse project");
 
@@ -54,14 +58,38 @@ pub fn run(path: &str) {
 		sample_rate: 44100,
 	};
 
-	let mut ports = init_nodes(&env, nodes);
+	let mut ports: HashMap<String, Ports> = init_nodes(&env, nodes);
 
-	loop {
-		// CTRL-C this
-		process_frame(&env, nodes, &mut ports);
-	}
-	// TODO merayen send the nodes to something that process them?
 }
+
+/// Run a single text block of text. For debugging.
+pub fn run_single_module(text: &str) -> ParseResults {
+	let parse_results: ParseResults = parse_module_text(text);
+
+	parse_results
+}
+
+
+fn start_process_loop(
+	module: &mut ParseResults,
+	env: &ProcessNodeEnvironment,
+	nodes: &mut HashMap<String, Option<Box<dyn ProcessNode>>>,
+	ports: &mut HashMap<String, Ports>,
+) {
+	// TODO should probably only run the loop when reacting on commands
+	let mut frames_to_process = -1; // TODO merayen get the frames to process count from a command, like "<play 100"
+	loop { // CTRL-C this
+		if frames_to_process == 0 {
+			break;
+		}
+		if frames_to_process > 0 {
+			frames_to_process -= 1;
+		}
+
+		process_frame(&env, nodes, ports);
+	}
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -82,10 +110,5 @@ mod tests {
 
 		println!("{}", modules["example_project/main.txt"].nodes.len());
 		assert!(modules["example_project/main.txt"].nodes.len() == 4);
-	}
-
-	#[test]
-	fn run_project() {  // TODO merayen remove this
-		run("example_project");
 	}
 }
