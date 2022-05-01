@@ -8,9 +8,8 @@ pub struct TextLine {
 	pub line_number: usize,
 }
 
-pub fn parse_module(text: &str) -> Vec<TextLine> {
-	//let text = std::fs::read_to_string(path).expect(format!("Could not read {}", path).as_str()).to_string();
 
+pub fn parse_module(text: &str) -> Vec<TextLine> {
 	let mut text_lines = Vec::new();
 	let mut stack: Vec<i32> = Vec::new();
 	let mut indent_level = 0;
@@ -36,6 +35,7 @@ pub fn parse_module(text: &str) -> Vec<TextLine> {
 	text_lines
 }
 
+
 fn get_indent_level(line: &str) -> u16 {
 	let mut c = 0;
 	for x in (&line).chars() {
@@ -47,6 +47,7 @@ fn get_indent_level(line: &str) -> u16 {
 
 	c
 }
+
 
 /// Get the lines for one "indent group"
 /// ```
@@ -61,6 +62,7 @@ fn get_indent_level(line: &str) -> u16 {
 pub fn get_indent_lines(lines: &[TextLine]) -> &[TextLine] {
 	&lines[..get_indent_line_count(lines)]
 }
+
 
 /// Find out how many lines this indent level and its children is. E.g, here we would return 4:
 /// ```
@@ -80,6 +82,7 @@ pub fn get_indent_line_count(lines: &[TextLine]) -> usize {
 			lines.len()
 		)
 }
+
 
 #[cfg(test)]
 mod tests {

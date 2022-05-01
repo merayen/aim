@@ -202,7 +202,7 @@ fn parse_node(result: &mut ParseResults, text_consumer: &mut TextConsumer) {
 
 	// Figure out which node we should pass the data to
 	let node = match name.as_str() {
-		"sine" => { nodes::sine::parse(result, text_consumer) }
+		"sine" => { Some(nodes::sine::parse(result, text_consumer)) }
 		_ => {
 			text_consumer.consume_with_error(result, "Unknown node");
 
