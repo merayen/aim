@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use crate::parse_nodes;
+use crate::parse;
 use crate::process;
 use crate::nodes;
 
@@ -20,9 +21,9 @@ fn parse_project(path: &str) -> Result<HashMap<String, parse_nodes::ParseResults
 				if filename.ends_with(".txt") {
 					println!("Parsing module {}", filename);
 					let stuff = std::fs::read_to_string(filename).unwrap();
-					let module: parse_nodes::ParseResults = parse_nodes::parse_module_text(stuff.as_str());
+					let (results, text_consumer) = parse_nodes::parse_module_text(stuff.as_str());
 
-					modules.insert(filename.to_string(), module);
+					modules.insert(filename.to_string(), results);
 				}
 			}
 
@@ -67,10 +68,10 @@ pub fn run(path: &str) {
 
 
 /// Run a single text block of text. For debugging.
-pub fn run_single_module(text: &str, env: &nodes::common::ProcessNodeEnvironment) -> parse_nodes::ParseResults {
-	let parse_results: parse_nodes::ParseResults = parse_nodes::parse_module_text(text);
+pub fn run_single_module<'a>(text: &'a str, env: &nodes::common::ProcessNodeEnvironment) -> (parse_nodes::ParseResults, String) {
+	let (parse_results, text_consumer) = parse_nodes::parse_module_text(text);
 
-	parse_results
+	(parse_results, text_consumer.to_string())
 }
 
 
@@ -104,14 +105,6 @@ mod tests {
 
 		assert!(modules.len() == 1);
 		assert!(modules.contains_key("example_project/main.txt"));
-
-		for x in &modules["example_project/main.txt"].lines {
-			if x.indent_level == 0 {
-				println!("{}", x.text);
-			}
-		}
-
-		println!("{}", modules["example_project/main.txt"].nodes.len());
 		assert!(modules["example_project/main.txt"].nodes.len() == 4);
 	}
 }
