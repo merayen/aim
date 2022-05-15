@@ -12,7 +12,7 @@ use crate::nodes;
 
 /// A node that parses its .txt-file
 trait ParseNode {
-	fn parse(text_consumer: parse::TextConsumer);
+	fn parse(text_consumer: parse::IndentBlock);
 }
 
 
@@ -49,45 +49,47 @@ pub fn parse_commands(text: &str) -> Vec<Command> {
 /// sine IDabc
 /// ```
 /// ...would return "IDabc"
-fn parse_node_header(result: &mut ParseResults, text_consumer: &mut parse::TextConsumer) -> (String, String) {
-	assert!(text_consumer.current_indentation() == 0);
+fn parse_node_header(result: &mut ParseResults, text_consumer: &mut parse::IndentBlock) -> (String, String) {
 
-	let header = text_consumer.current_line();
-	let mut splitter = header.splitn(2, " ");
+	unimplemented!("Not implemented"); // TODO merayen
+	//assert!(text_consumer.current_indentation() == 0);
+	//let header = text_consumer.current_line();
+	//let mut splitter = header.splitn(2, " ");
 
-	// Spool past the name of the node, e.g "sine", "out", as the node is already identified
-	let name = splitter.next().unwrap();
+	//// Spool past the name of the node, e.g "sine", "out", as the node is already identified
+	//let name = splitter.next().unwrap();
 
-	let id = splitter.next().expect("The node should have an id set by now").trim().to_owned();
+	//let id = splitter.next().expect("The node should have an id set by now").trim().to_owned();
 
-	(name.to_string(), id.to_string())
+	//(name.to_string(), id.to_string())
 }
 
 
-fn parse_node(result: &mut ParseResults, text_consumer: &mut parse::TextConsumer) {
-	let title_line = text_consumer.current_line();
+fn parse_node(result: &mut ParseResults, text_consumer: &mut parse::IndentBlock) {
+	unimplemented!("Not implemented"); // TODO merayen
+	//let title_line = text_consumer.current_line();
 
-	let (name, id) = parse_node_header(result, text_consumer);
+	//let (name, id) = parse_node_header(result, text_consumer);
 
 	// Figure out which node we should pass the data to
-	let node = match name.as_str() {
-		"sine" => { Some(nodes::sine::parse(result, text_consumer)) }
-		_ => {
-			let line = text_consumer.current_line() + "  # ERROR: Unknown node";
-			let lol = Box::new(line.to_owned());
-			// TODO merayen clean up code
-			text_consumer.replace_line(lol.to_string());
-			text_consumer.next_sibling();
-			// TODO merayen
+	//let node = match name.as_str() {
+	//	"sine" => { Some(nodes::sine::parse(result, text_consumer)) }
+	//	_ => {
+	//		let line = text_consumer.current_line() + "  # ERROR: Unknown node";
+	//		let lol = Box::new(line.to_owned());
+	//		// TODO merayen clean up code
+	//		text_consumer.replace_line(lol.to_string());
+	//		text_consumer.next_sibling();
+	//		// TODO merayen
 
-			None
-		}
-	};
+	//		None
+	//	}
+	//};
 
-	text_consumer.leave();
+	//text_consumer.leave();
 
-	assert!(!result.nodes.contains_key(&id), "ID {} has already been used", id);
-	result.nodes.insert(id, node);
+	//assert!(!result.nodes.contains_key(&id), "ID {} has already been used", id);
+	//result.nodes.insert(id, node);
 }
 
 
@@ -97,19 +99,26 @@ fn parse_node(result: &mut ParseResults, text_consumer: &mut parse::TextConsumer
 pub fn parse_module_text(raw_text: &str) -> (ParseResults, String) {
 	let text = initialize_nodes(raw_text);
 	let owned_text = text.to_owned();
-	let mut text_consumer = parse::TextConsumer::new(&owned_text);
+	unimplemented!("Not implemented"); // TODO merayen
+	//let mut text_consumer = parse::IndentBlock::new(&owned_text);
 
-	let mut result = ParseResults {
-		errors: Vec::new(),
-		nodes: HashMap::new(),
-	};
+	//let mut result = ParseResults {
+	//	errors: Vec::new(),
+	//	nodes: HashMap::new(),
+	//};
 
-	while text_consumer.has_next() {
-		parse_node(&mut result, &mut text_consumer);
-		assert!(text_consumer.current_indentation() == 0, "Node did not read all its data, left too early");
-	}
+	//let mut i = 0;
+	//while text_consumer.current_line() != "" {
+	//	// TODO merayen problem: if node has no properties, will re-read it forever. IndentBlock needs to be able to put cursor to self.lines.len()
+	//	parse_node(&mut result, &mut text_consumer);
+	//	assert!(text_consumer.current_indentation() == 0, "Node did not read all its data or didn't leave() its scope correctly");
+	//	if i > 100 {
+	//		panic!("{}", text_consumer.current_line()); // TODO merayen remove
+	//	}
+	//	i += 1;
+	//}
 
-	(result, text_consumer.to_string())
+	//(result, text_consumer.to_string())
 }
 
 
@@ -219,7 +228,7 @@ d id3
 		assert!(ids == vec!["id1".to_string(), "id3".to_string()])
 	}
 
-	//#[test]
+	#[test]
 	fn initializing_nodes() {
 		let result = initialize_nodes("
 a
@@ -238,7 +247,7 @@ e id9
 		".trim());
 	}
 
-	//#[test]
+	#[test]
 	fn parsing_text() {
 		let (result, text) = parse_module_text("
 sine id0
@@ -246,6 +255,8 @@ sine id0
 out id1
 	amplitude 1
 		".trim());
+
+		println!("{}", text);
 
 		assert!(result.nodes.len() == 2);
 		assert!(text == "
@@ -268,7 +279,7 @@ e
 		// TODO merayen
 	}
 
-	#[test]
+	//#[test]
 	fn unknown_node() {
 		let (result, text) = parse_module_text("
 lolwat id0
@@ -282,7 +293,7 @@ lolwat id0  # ERROR: Unknown node
 		".trim());
 	}
 
-	#[test]
+	//#[test]
 	fn sine_unknown_property() {
 		let (result, text) = parse_module_text("
 sine id0

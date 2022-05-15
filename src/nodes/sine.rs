@@ -3,32 +3,36 @@ use crate::parse_nodes;
 use crate::parse;
 use crate::nodes;
 
-pub fn parse(result: &mut parse_nodes::ParseResults, text_consumer: &mut parse::TextConsumer) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
-	assert!(text_consumer.current_indentation() == 0);
+pub fn parse(result: &mut parse_nodes::ParseResults, text_consumer: &mut parse::IndentBlock) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
+	unimplemented!("Not implemented"); // TODO merayen
+	//assert!(text_consumer.current_indentation() == 0);
+	//let mut frequency = 440f32;
 
-	if text_consumer.enter() { // Dive into the properties indentation level
-		loop {
-			let line = text_consumer.current_line();
-			let mut splitter = line.splitn(2, " ");
-			let property_name = splitter.next().unwrap();
-			let property_value = splitter.next();
-			match text_consumer.current_line().as_str() {
-				"frequency" => {
-					unimplemented!("Parse frequency"); // TODO merayen
-				}
-				_ => {
-					unimplemented!("Add 'unknown property' error"); // TODO merayen
-				}
-			}
-		}
-	}
+	//if text_consumer.enter() { // Dive into the properties indentation level
+	//	loop {
+	//		let line = text_consumer.current_line();
+	//		let mut splitter = line.splitn(2, " ");
+	//		let property_name = splitter.next().unwrap();
+	//		let property_value = splitter.next();
+	//		match property_name {
+	//			"frequency" => {
+	//				frequency = property_value.unwrap().parse::<f32>().unwrap();
+	//			}
+	//			_ => {
+	//				unimplemented!("Add 'unknown property' error"); // TODO merayen
+	//			}
+	//		}
+	//		if !text_consumer.next_sibling() {break;}
+	//	}
+	//	text_consumer.leave();
+	//}
 
-	Box::new(
-		SineNode {
-			frequency: 440f32,
-			position: 0f64,
-		}
-	)
+	//Box::new(
+	//	SineNode {
+	//		frequency: 440f32,
+	//		position: 0f64,
+	//	}
+	//)
 }
 
 pub struct SineNode {
@@ -79,6 +83,7 @@ sine
 			&env,
 		);
 
+		println!("NEI{}JO", text);
 		assert!(text == "
 sine id1
 	frequency 100

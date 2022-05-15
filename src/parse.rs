@@ -1,172 +1,104 @@
-use std::collections::HashSet;
+pub struct IndentBlock {
+	pub text: String,
+	pub children: Vec<IndentBlock>,
 
-pub struct TextConsumer {
-	lines: Vec<String>,
-	indentations: Vec<u16>,
-	index: usize,
-	current_indentation: u16,
+	/// Internal variable. The total amount of children, deeply.
+	///
+	/// It will go out of sync when adding or removing elements. Not to be used outside IndentBlock.
+	deep_count: usize,
+
+	line_number: usize,
 }
 
-impl TextConsumer {
-	pub fn new(text: &str) -> TextConsumer {
+impl IndentBlock {
+	pub fn parse_text(text: &str) -> IndentBlock {
 		assert!(text.trim().len() > 0);
 
-		let mut lines: Vec<String> = Vec::new();
-		let mut indentations: Vec<u16> = Vec::new();
+		// TODO merayen remove empty lines
+		let lines: Vec<String> = text.split("\n").map(str::to_string).collect();
 
-		for line in text.split("\n") {
-			lines.push(line.trim().to_string());
-			indentations.push(get_indent_level(line));
-		}
+		let children = IndentBlock::parse_children(&lines[..], 0, 1);
 
-		TextConsumer {
-			lines: lines,
-			indentations: indentations,
-			index: 0,
-			current_indentation: 0,
+		IndentBlock {
+			text: "".to_string(),
+			children: children,
+			deep_count: lines.len(),
+			line_number: 0,
 		}
 	}
 
-	/// Expect that next element will be at one higher indentation level
-	#[must_use]
-	pub fn enter(&mut self) -> bool {
-		if self.index + 1 < self.lines.len() {
-			let next_indentation_level = self.indentations[self.index + 1];
-
-			if next_indentation_level == self.current_indentation + 1 {
-				self.current_indentation += 1;
-				self.index += 1;
-				return true;
-			}
+	fn parse_children(lines: &[String], indent_level: u16, line_number: usize) -> Vec<IndentBlock> {
+		if lines.len() == 0 {
+			return vec![];
 		}
 
-		return false;
-	}
-
-	/// Leave the current level, down one indentation
-	///
-	/// If next element is two or more indentations lower, stay at same position
-	/// and decrease current indentation by 1.
-	///
-	/// Note that current_line() will return empty string in these cases. Continue
-	/// to call leave() until indentation level hits the same indentation level as
-	/// the next element.
-	#[must_use]
-	pub fn leave(&mut self) -> bool {
-		if self.current_indentation == 0 {
-			// We are already on the lowest indentation level, nothing to leave
-			return false;
+		let actual_indent_level = get_indent_level(lines[0].as_str());
+		if actual_indent_level > indent_level {
+			panic!("Element does not have a direct parent at line number {}", line_number);
+		} else if actual_indent_level < indent_level {
+			return vec![]; // No elements at this indentation level
 		}
 
-		for i in self.index + 1 .. self.lines.len() {
-			if self.indentations[i] == self.current_indentation - 1 {
-				// We have found an element that is one level below.
-				// Jump to it directly.
-				self.index = i;
-				self.current_indentation -= 1;
-				return true;
-			} else if self.indentations[i] < self.current_indentation - 1 {
-				self.index = i - 1;
-				self.current_indentation -= 1;
-				return true;
-			}
-		}
+		let mut result: Vec<IndentBlock> = Vec::new();
 
-		// We didn't find any lower elements.
-		// Jump to the end.
-		self.index = self.lines.len() - 1;
-		self.current_indentation -= 1;
-
-		return true;
-	}
-
-	/// Adds a line of text before the current line, at the current level
-	#[must_use]
-	pub fn add_line(&mut self, line: String) {
-		assert!(line.find("\n").is_none(), "TextConsumer::add does not allow multiple lines");
-
-		self.lines.insert(self.index, line.trim().to_string());
-		self.indentations.insert(self.index, self.current_indentation);
-
-		self.index += 1;
-	}
-
-	/// Replace the current line
-	pub fn replace_line(&mut self, line: String) {
-		assert!(line.find("\n").is_none(), "TextConsumer::add does not allow multiple lines");
-
-		self.lines[self.index] = line.trim().to_string();
-	}
-
-	/// Skip whole element including its children
-	///
-	/// If reaches the end, sets the index to the last item.
-	/// Does not change current_indentation. You need to call leave() for that.
-	pub fn next_sibling(&mut self) {
-		for position in self.index + 1 .. self.lines.len() {
-			if self.indentations[position] <= self.current_indentation {
-				self.index = position; // Found the sibling or a lower level
-				return;
-			}
-		}
-
-		// No sibling found or element with lower element. Move to the end.
-		self.index = self.lines.len() - 1;
-	}
-
-	/// Return the current line
-	///
-	/// Return empty string if no element is at that position.
-	pub fn current_line(&self) -> String {
-		if self.current_indentation == self.indentations[self.index] {
-			// Only return text if on the same indentation level
-			self.lines[self.index].trim().to_string()
-		} else {
-			"".to_string()
-		}
-	}
-
-	/// Move cursor back to the top
-	pub fn reset_cursor(&mut self) {
-		self.index = 0;
-		self.current_indentation = 0;
-	}
-
-	pub fn to_string(&self) -> String {
-		let result = String::new();
-
-		assert!(self.lines.len() == self.indentations.len());
-
-		for i in 0..self.lines.len() {
-			let mut line = String::new();
-
-			if i > 0 {
-				line.push_str("\n");
+		let mut i = 0;
+		while i < lines.len() {
+			if lines[i].trim().len() == 0 {
+				// Empty line, ignore it
+				continue;
 			}
 
-			line.push_str(("\t".repeat(self.indentations[i] as usize)).as_str());
-			line.push_str(&self.lines[i]);
+			let new_indent_level = get_indent_level(lines[i].as_str());
+
+			if new_indent_level < indent_level {
+				break; // Leaving our indentation level, we are done processing
+			}
+
+			let line = lines[i].trim().to_string();
+
+			if new_indent_level > indent_level {
+				panic!("Element missing parent detected at line number {}: {}", line_number + i, line);
+			}
+
+			let children = IndentBlock::parse_children(&lines[i+1..], indent_level + 1, line_number + i + 1);
+
+			let mut deep_count: usize = children.len();
+			for c in &children {
+				deep_count += c.deep_count;
+			}
+
+			result.push(
+				IndentBlock {
+					text: line,
+					children: children,
+					deep_count: deep_count,
+					line_number: line_number + i,
+				}
+			);
+
+			// Nested elements has been parsed by recursion. Move our pointer forward.
+			i += deep_count + 1;
 		}
 
 		result
 	}
 
-	/// Checks if current indentation level has more elements after this one
-	#[must_use]
-	pub fn has_next(&self) -> bool {
-		for position in self.index + 1 .. self.lines.len() {
-			if self.indentations[position] == self.current_indentation {
-				return true;
-			} else if self.indentations[position] < self.current_indentation {
-				return false;
-			}
-		}
+	fn children_to_string(&self, result: &mut String, indent_level: usize) {
+		for x in &self.children {
+			result.push_str(&"\t".repeat(indent_level));
+			result.push_str(x.text.as_str());
+			result.push_str("\n");
 
-		return false;
+			IndentBlock::children_to_string(&x, result, indent_level + 1);
+		}
 	}
 
-	pub fn current_indentation(&self) -> u16 {
-		self.current_indentation
+	pub fn to_string(&self) -> String {
+		let mut result = String::with_capacity(self.deep_count * 20);  // 20 is perhaps average line size, no idea
+
+		IndentBlock::children_to_string(self, &mut result, 0);
+
+		result.trim().to_string()
 	}
 }
 
@@ -189,134 +121,67 @@ mod tests {
 	use super::*;
 
 	#[test]
-	fn simple_parsing() {
-		let mut text_consumer = TextConsumer::new("
+	fn parse_simple_text() {
+		let text = "
 a
 	b
 	c
 		d
 	e
-f
-		".trim());
+		f
+g
+		".trim();
 
-		assert!(text_consumer.lines.len() == 6);
-		assert!(text_consumer.current_line() == "a");
-		assert!(text_consumer.has_next());
-		assert!(!text_consumer.leave(), "Shouldn't be able to leave 'a' here as it is on the top-level, and next element is child");
-		assert!(text_consumer.enter());
-		assert!(text_consumer.current_line() == "b");
-		text_consumer.next_sibling();
-		assert!(text_consumer.current_line() == "c");
-		assert!(text_consumer.enter());
-		assert!(text_consumer.current_line() == "d");
-		assert!(!text_consumer.enter(), "Shouldn't be able to enter non-existing level below 'd'");
-		assert!(text_consumer.leave());
-		assert!(text_consumer.current_line() == "e");
-		assert!(!text_consumer.enter());
-		assert!(text_consumer.leave());
-		assert!(text_consumer.current_line() == "f");
-		assert!(!text_consumer.leave());
-	}
+		let result = IndentBlock::parse_text(text);
+		
+		// Top level
+		assert!(result.deep_count == 7);
+		assert!(result.text == "");
+		assert!(result.children.len() == 2);
+		assert!(result.line_number == 0);
 
-	#[test]
-	fn leave_multiple_levels() {
-		let mut text_consumer = TextConsumer::new("
-a
-	b
-		c
-			d
-	e
-f
-		".trim());
+		// "a"
+		assert!(result.children[0].deep_count == 5);
+		assert!(result.children[0].text == "a");
+		assert!(result.children[0].children.len() == 3);
+		assert!(result.children[0].line_number == 1);
 
+		// "b"
+		assert!(result.children[0].children[0].deep_count == 0);
+		assert!(result.children[0].children[0].text == "b");
+		assert!(result.children[0].children[0].children.len() == 0);
+		assert!(result.children[0].children[0].line_number == 2);
 
-		assert!(text_consumer.current_line() == "a");
-		assert!(text_consumer.enter());
-		assert!(text_consumer.enter());
-		assert!(text_consumer.enter());
-		assert!(text_consumer.current_line() == "d");
-		assert!(text_consumer.current_indentation() == 3);
-		assert!(text_consumer.leave());
-		assert!(text_consumer.current_line() == "");
-	}
+		// "c"
+		assert!(result.children[0].children[1].deep_count == 1);
+		assert!(result.children[0].children[1].text == "c");
+		assert!(result.children[0].children[1].children.len() == 1);
+		assert!(result.children[0].children[1].line_number == 3);
 
-	#[test]
-	fn only_leave_single_indentation() {
-		let mut text_consumer = TextConsumer::new("
-a
-	b
-		c
-d
-		".trim());
+		// "d"
+		assert!(result.children[0].children[1].children[0].deep_count == 0);
+		assert!(result.children[0].children[1].children[0].text == "d");
+		assert!(result.children[0].children[1].children[0].children.len() == 0);
+		assert!(result.children[0].children[1].children[0].line_number == 4);
 
-		assert!(text_consumer.enter());
-		assert!(text_consumer.enter());
-		assert!(text_consumer.current_line() == "c");
-		assert!(text_consumer.current_indentation() == 2);
-		assert!(text_consumer.leave());
-		assert!(text_consumer.current_line() == "");
-		assert!(text_consumer.leave());
-		assert!(text_consumer.current_line() == "d");
-		assert!(!text_consumer.has_next());
-	}
+		// "e"
+		assert!(result.children[0].children[2].deep_count == 1);
+		assert!(result.children[0].children[2].text == "e");
+		assert!(result.children[0].children[2].children.len() == 1);
+		assert!(result.children[0].children[2].line_number == 5);
 
-	#[test]
-	fn adding_lines() {
-		let mut text_consumer = TextConsumer::new("
-a
-	b
-c
-		".trim());
+		// "f"
+		assert!(result.children[0].children[2].children[0].deep_count == 0);
+		assert!(result.children[0].children[2].children[0].text == "f");
+		assert!(result.children[0].children[2].children[0].children.len() == 0);
+		assert!(result.children[0].children[2].children[0].line_number == 6);
 
-		assert!(text_consumer.lines.len() == 3);
-		assert!(text_consumer.current_line() == "a");
-		assert!(text_consumer.index == 0);
-		text_consumer.add_line("A".to_string());
-		assert!(text_consumer.current_line() == "a");
-		assert!(text_consumer.index == 1);
-	}
+		// "g"
+		assert!(result.children[1].deep_count == 0);
+		assert!(result.children[1].text == "g");
+		assert!(result.children[1].children.len() == 0);
+		assert!(result.children[1].line_number == 7);
 
-	#[test]
-	fn remove_lines() {
-		let mut text_consumer = TextConsumer::new("
-a
-	b
-c
-		".trim());
-
-		assert!(text_consumer.lines.len() == 3);
-		assert!(text_consumer.current_line() == "a");
-		text_consumer.replace_line("A".to_string());
-		assert!(text_consumer.current_line() == "A");
-		assert!(text_consumer.current_indentation == 0);
-		assert!(text_consumer.enter());
-		assert!(text_consumer.current_line() == "b");
-		text_consumer.replace_line("B".to_string());
-		assert!(text_consumer.current_line() == "B");
-		assert!(text_consumer.leave());
-	}
-
-	#[test]
-	fn skip_whole_element() {
-		let mut text_consumer = TextConsumer::new("
-a
-	b
-c
-		".trim());
-
-		text_consumer.next_sibling();
-		assert!(text_consumer.current_line() == "c");
-		assert!(text_consumer.current_indentation() == 0);
-
-		let mut text_consumer = TextConsumer::new("
-a
-	b
-		".trim());
-
-		assert!(text_consumer.current_line() == "a");
-		assert!(text_consumer.current_indentation() == 0);
-		text_consumer.next_sibling();
-		assert!(text_consumer.current_line() == "");
-		assert!(text_consumer.current_indentation() == 0);
+		assert!(result.to_string() == text);
 	}
 }
