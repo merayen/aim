@@ -76,7 +76,6 @@ sine
 			&env,
 		);
 
-		println!("NEI{}JO", text);
 		assert!(text == "
 sine id1
 	frequency 100

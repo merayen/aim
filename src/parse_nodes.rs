@@ -233,8 +233,6 @@ out id1
 	amplitude 1
 		".trim());
 
-		println!("{}", text);
-
 		assert!(result.nodes.len() == 2);
 		assert!(text == "
 sine id0
@@ -242,18 +240,6 @@ sine id0
 out id1  # ERROR: Unknown node
 	amplitude 1
 		".trim());
-	}
-
-	#[test]
-	fn consuming_errors() {
-		let (parsed, text) = parse_module_text("
-a
-	b
-		c
-	d
-e
-		".trim());
-		// TODO merayen
 	}
 
 	#[test]

@@ -19,7 +19,6 @@ fn parse_project(path: &str) -> Result<HashMap<String, parse_nodes::ParseResults
 				let filename = path.to_str().unwrap();
 
 				if filename.ends_with(".txt") {
-					println!("Parsing module {}", filename);
 					let stuff = std::fs::read_to_string(filename).unwrap();
 					let (results, text_consumer) = parse_nodes::parse_module_text(stuff.as_str());
 
