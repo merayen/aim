@@ -99,7 +99,7 @@ fn start_process_loop(
 mod tests {
 	use super::*;
 
-	//#[test]
+	#[test]
 	fn parsing_example_project() {
 		// TODO merayen hangs forever
 		let modules = parse_project("example_project/").unwrap();
