@@ -35,6 +35,26 @@ fn parse_project(path: &str) -> Result<HashMap<String, parse_nodes::ParseResults
 }
 
 
+fn start_process_loop(
+	env: &nodes::common::ProcessNodeEnvironment,
+	nodes: &mut HashMap<String, Option<Box<dyn nodes::common::ProcessNode>>>,
+	ports: &mut HashMap<String, nodes::common::Ports>,
+) {
+	// TODO should probably only run the loop when reacting on commands
+	let mut frames_to_process = -1; // TODO merayen get the frames to process count from a command, like "<play 100"
+	loop { // CTRL-C this
+		if frames_to_process == 0 {
+			break;
+		}
+		if frames_to_process > 0 {
+			frames_to_process -= 1;
+		}
+
+		process::process_frame(&env, nodes, ports);
+	}
+}
+
+
 /// Parse project and execute any commands and then run it
 ///
 /// * `frame_count` - How many frames to process. Below 0 means "infinite"
@@ -62,7 +82,6 @@ pub fn run(path: &str) {
 	let mut ports: HashMap<String, nodes::common::Ports> = process::init_nodes(&env, nodes);
 
 	start_process_loop(&env, nodes, &mut ports);
-
 }
 
 
@@ -74,33 +93,12 @@ pub fn run_single_module<'a>(text: &'a str, env: &nodes::common::ProcessNodeEnvi
 }
 
 
-fn start_process_loop(
-	env: &nodes::common::ProcessNodeEnvironment,
-	nodes: &mut HashMap<String, Option<Box<dyn nodes::common::ProcessNode>>>,
-	ports: &mut HashMap<String, nodes::common::Ports>,
-) {
-	// TODO should probably only run the loop when reacting on commands
-	let mut frames_to_process = -1; // TODO merayen get the frames to process count from a command, like "<play 100"
-	loop { // CTRL-C this
-		if frames_to_process == 0 {
-			break;
-		}
-		if frames_to_process > 0 {
-			frames_to_process -= 1;
-		}
-
-		process::process_frame(&env, nodes, ports);
-	}
-}
-
-
 #[cfg(test)]
 mod tests {
 	use super::*;
 
 	#[test]
 	fn parsing_example_project() {
-		// TODO merayen hangs forever
 		let modules = parse_project("example_project/").unwrap();
 
 		assert!(modules.len() == 1);

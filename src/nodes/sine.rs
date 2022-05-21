@@ -80,5 +80,8 @@ sine
 sine id1
 	frequency 100
 		".trim());
+
+		assert!(parse_results.nodes.len() == 1);
+		assert!(parse_results.nodes.contains_key("id1"));
 	}
 }
