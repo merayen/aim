@@ -80,7 +80,7 @@ pub enum PortParameter {
 
 /// Parse a parameter line that can be connected to an outlet of another node
 pub fn parse_input_parameter(text: &str) -> Result<PortParameter, String> {
-	let mut splitter = text.split(" ");
+	let mut splitter = text.trim().split(" ");
 	let name = splitter.next().unwrap().to_string();
 
 	match splitter.next() {
@@ -106,7 +106,7 @@ pub fn parse_input_parameter(text: &str) -> Result<PortParameter, String> {
 				Some(node_id) => {
 					match splitter.next() {
 						Some(inlet) => {
-							Ok(PortParameter::Outlet {name: name, node_id: node_id.to_string(), inlet: inlet.to_string()})
+							Ok(PortParameter::Outlet {name: name, node_id: node_id.to_string(), inlet: inlet.trim().to_string()})
 						}
 						_ => {
 							Err("Missing name of port of the connecting node".to_string())
@@ -119,7 +119,15 @@ pub fn parse_input_parameter(text: &str) -> Result<PortParameter, String> {
 			}
 		}
 		Some(v) => {
-			Ok(PortParameter::Constant {name: name, value: v.to_string() + " " + splitter.map(|x|x.to_string() + " ").collect::<String>().trim()})
+			Ok(
+				PortParameter::Constant {
+					name: name,
+					value: (
+						v.to_string() +
+						" " +
+						splitter.filter(|x|x.len()>1).map(|x|x.to_string() + " ").collect::<String>().as_str()).trim().to_string()
+					}
+				)
 		}
 		None => {
 			Err("Parameter is missing value".to_string())

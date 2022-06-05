@@ -7,22 +7,30 @@ pub fn parse(result: &mut parse_nodes::ParseResults, indent_block: &mut parse::I
 	let mut frequency = 440f32;
 
 	for property_indent_block in &mut indent_block.children {
-		let mut splitter = property_indent_block.text.splitn(2, " ");
-		let property_name = splitter.next().unwrap();
-		let property_value = splitter.next();
-		match property_name {
-			"frequency" => {
-				frequency = property_value.unwrap().parse::<f32>().unwrap();
+		match nodes::common::parse_input_parameter(&property_indent_block.text) {
+			Ok(nodes::common::PortParameter::Constant {name, value}) => {
+				match name.as_str() {
+					"frequency" => {
+						println!("'{}'", value);
+						frequency = value.parse::<f32>().unwrap();
+					}
+					_ => {
+						property_indent_block.text.push_str("  # ERROR: Unknown property");
+					}
+				}
+			}
+			Err(message) => {
+				property_indent_block.text.push_str(&("  # ERROR: ".to_string() + &message));
 			}
 			_ => {
-				property_indent_block.text.push_str("  # ERROR: Unknown property");
+				property_indent_block.text.push_str("  # ERROR: Invalid property");
 			}
 		}
 	}
 
 	Box::new(
 		SineNode {
-			frequency: 440f32,
+			frequency: frequency,
 			position: 0f64,
 		}
 	)

@@ -190,7 +190,7 @@ mod tests {
 	#[test]
 	fn getting_highest_id_value() {
 		let highest = get_highest_id(vec!["id12".to_string(), "id5".to_string(), "id1".to_string()]);
-		assert!(highest == 12);
+		assert_eq!(highest, 12);
 	}
 
 	#[test]
@@ -202,7 +202,7 @@ c
 d id3
 		".trim());
 
-		assert!(ids == vec!["id1".to_string(), "id3".to_string()])
+		assert_eq!(ids, vec!["id1".to_string(), "id3".to_string()])
 	}
 
 	#[test]
@@ -215,7 +215,7 @@ c id5
 e id9
 		".trim());
 
-		assert!(result == "
+		assert_eq!(result, "
 a id10
 	b
 c id5
@@ -233,8 +233,8 @@ out id1
 	amplitude 1
 		".trim());
 
-		assert!(result.nodes.len() == 2);
-		assert!(text == "
+		assert_eq!(result.nodes.len(), 2);
+		assert_eq!(text, "
 sine id0
 	frequency 440
 out id1  # ERROR: Unknown node
@@ -249,8 +249,8 @@ lolwat id0
 	lolproperty 1337
 ".trim());
 
-		assert!(result.nodes.len() == 1);
-		assert!(text == "
+		assert_eq!(result.nodes.len(), 1);
+		assert_eq!(text, "
 lolwat id0  # ERROR: Unknown node
 	lolproperty 1337
 		".trim());
@@ -263,8 +263,8 @@ sine id0
 	lolproperty 1337
 		".trim());
 
-		assert!(result.nodes.len() == 1);
-		assert!(text == "
+		assert_eq!(result.nodes.len(), 1);
+		assert_eq!(text, "
 sine id0
 	lolproperty 1337  # ERROR: Unknown property
 		".trim());
