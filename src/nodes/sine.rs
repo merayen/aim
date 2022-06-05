@@ -11,7 +11,6 @@ pub fn parse(result: &mut parse_nodes::ParseResults, indent_block: &mut parse::I
 			Ok(nodes::common::PortParameter::Constant {name, value}) => {
 				match name.as_str() {
 					"frequency" => {
-						println!("'{}'", value);
 						frequency = value.parse::<f32>().unwrap();
 					}
 					_ => {

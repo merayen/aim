@@ -1,27 +1,47 @@
 use crate::nodes::common::{ProcessNode, Ports};
 use crate::project;
-use std::collections::{HashMap, LinkedList};
+use std::collections::{HashMap, HashSet};
 
 /// Plans in which order nodes in a module should be executed
 ///
 /// Returns the indexes in the input array that the nodes should be executed.
-pub fn plan_execution_order(nodes: &HashMap<String, Option<Box<dyn ProcessNode>>>, ports: &HashMap<String, Ports>) -> Vec<usize> {
-	let mut result: Vec<usize> = Vec::new();
+pub fn plan_execution_order<'a>(nodes: &'a HashMap<String, Option<Box<dyn ProcessNode>>>, ports: &HashMap<String, Ports>) -> Vec<&'a String> {
+	let mut result: Vec<&String> = Vec::with_capacity(nodes.len());
 
-	let mut remaining_nodes: LinkedList<String> = nodes.keys().cloned().collect();
+	let mut remaining_nodes: HashSet<String> = nodes.keys().cloned().collect();
 
 	// Find nodes that are not connected
-	let mut not_connected_nodes: Vec<String> = Vec::new();
-	for (id, node) in nodes {}
+	let mut not_connected_nodes: Vec<&String> = Vec::new();
+	let mut generators: Vec<&String> = Vec::new();
+	for (id, node) in nodes {
+		let ports = &ports[id];
 
-	// Find the left-most nodes
-	let mut left_most_nodes: Vec<String> = Vec::new();
-	for (id, node) in nodes {}
+		// These should fail
+		assert_eq!(ports.inlets.len(), 0);
+		assert_eq!(ports.outlets.len(), 0);
+	
+		if ports.inlets.len() > 0 {
+			// A node dependent on other ones.
+			// We will handle those below.
+			continue;
+		}
 
-	// Follow from the left-most nodes
-	let mut left_most_nodes: Vec<String> = Vec::new();
-	for (id, node) in nodes {}
+		if ports.outlets.len() > 0 {
+			// Generator node
+			generators.push(id);
+		} else {
+			// Node not connected to anything
+			not_connected_nodes.push(id);
+		}
+		remaining_nodes.remove(id);
+	}
 
+	// Follow the generators
+	for id in generators {
+		println!("{}", id);
+	}
+
+	result.extend(not_connected_nodes.iter());
 	result
 }
 
@@ -50,5 +70,7 @@ sine id4
 		for node in nodes.values() {}
 
 		let result = plan_execution_order(&nodes, &ports);
+
+		assert_eq!(result, vec!["id1", "id2", "id3", "id4"]);
 	}
 }
