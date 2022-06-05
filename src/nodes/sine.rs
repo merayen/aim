@@ -43,6 +43,7 @@ impl nodes::common::ProcessNode for SineNode {
 	}
 	
 	fn process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut nodes::common::Ports) {
+		panic!("Yay, it works"); // TODO merayen remove
 		let mut out = ports.outlets.get_mut("out");
 		let mut out_data = out.as_mut().unwrap();
 		let mut signal = out_data.signal.as_mut().unwrap();

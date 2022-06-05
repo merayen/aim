@@ -55,6 +55,17 @@ fn start_process_loop(
 }
 
 
+pub fn initialize_nodes(nodes: &mut HashMap<String, Option<Box<dyn nodes::common::ProcessNode>>>) -> (nodes::common::ProcessNodeEnvironment, HashMap<String, nodes::common::Ports>) {
+	let env = nodes::common::ProcessNodeEnvironment { // TODO merayen move out
+		buffer_size: 8,
+		sample_rate: 44100,
+	};
+	
+	let mut ports: HashMap<String, nodes::common::Ports> = process::init_nodes(&env, nodes);
+
+	(env, ports)
+}
+
 /// Parse project and execute any commands and then run it
 ///
 /// * `frame_count` - How many frames to process. Below 0 means "infinite"
@@ -68,18 +79,12 @@ pub fn run(path: &str) {
 		}
 	}
 
-	assert!(modules.len() == 1, "Only support 1 module for now");
+	assert!(modules.len() == 1, "Only support 1 module for now"); // TODO merayen support multiple modules
 
-	// TODO merayen support multiple modules
 	let parse_results: &mut parse_nodes::ParseResults = modules.values_mut().next().unwrap();
 	let nodes = &mut parse_results.nodes;
 
-	let env = nodes::common::ProcessNodeEnvironment { // TODO merayen move out
-		buffer_size: 8,
-		sample_rate: 44100,
-	};
-
-	let mut ports: HashMap<String, nodes::common::Ports> = process::init_nodes(&env, nodes);
+	let (env, mut ports) = initialize_nodes(nodes);
 
 	start_process_loop(&env, nodes, &mut ports);
 }
