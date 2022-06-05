@@ -6,8 +6,8 @@ use crate::nodes;
 pub fn parse(result: &mut parse_nodes::ParseResults, indent_block: &mut parse::IndentBlock) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
 	let mut frequency = 440f32;
 
-	for property_indent_block in &mut indent_block.children {
-		match nodes::common::parse_input_parameter(&property_indent_block.text) {
+	for parameter_indent_block in &mut indent_block.children {
+		match nodes::common::parse_input_parameter(&parameter_indent_block.text) {
 			Ok(nodes::common::PortParameter::Constant {name, value}) => {
 				match name.as_str() {
 					"frequency" => {
@@ -15,15 +15,15 @@ pub fn parse(result: &mut parse_nodes::ParseResults, indent_block: &mut parse::I
 						frequency = value.parse::<f32>().unwrap();
 					}
 					_ => {
-						property_indent_block.text.push_str("  # ERROR: Unknown property");
+						parameter_indent_block.text.push_str("  # ERROR: Unknown parameter");
 					}
 				}
 			}
 			Err(message) => {
-				property_indent_block.text.push_str(&("  # ERROR: ".to_string() + &message));
+				parameter_indent_block.text.push_str(&("  # ERROR: ".to_string() + &message));
 			}
 			_ => {
-				property_indent_block.text.push_str("  # ERROR: Invalid property");
+				parameter_indent_block.text.push_str("  # ERROR: Invalid parameter");
 			}
 		}
 	}

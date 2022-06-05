@@ -24,7 +24,7 @@ pub struct ParseResults {
 	pub nodes: HashMap<String, Option<Box<dyn nodes::common::ProcessNode>>>,
 }
 
-pub struct Command { // TODO merayen should we use < or [? Should commands and properties have different characters?
+pub struct Command { // TODO merayen should we use < or [? Should commands and parameters have different characters?
 	/// The command text excluding the `<` and `>` sign
 	pub text: String,
 
@@ -246,27 +246,27 @@ out id1  # ERROR: Unknown node
 	fn unknown_node() {
 		let (result, text) = parse_module_text("
 lolwat id0
-	lolproperty 1337
+	lolparameter 1337
 ".trim());
 
 		assert_eq!(result.nodes.len(), 1);
 		assert_eq!(text, "
 lolwat id0  # ERROR: Unknown node
-	lolproperty 1337
+	lolparameter 1337
 		".trim());
 	}
 
 	#[test]
-	fn sine_unknown_property() {
+	fn sine_unknown_parameter() {
 		let (result, text) = parse_module_text("
 sine id0
-	lolproperty 1337
+	lolparameter 1337
 		".trim());
 
 		assert_eq!(result.nodes.len(), 1);
 		assert_eq!(text, "
 sine id0
-	lolproperty 1337  # ERROR: Unknown property
+	lolparameter 1337  # ERROR: Unknown parameter
 		".trim());
 	}
 }
