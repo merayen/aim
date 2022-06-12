@@ -5,7 +5,7 @@ pub trait ProcessNode {
 	fn on_init(&mut self, env: &ProcessNodeEnvironment) -> Ports;
 
 	/// Process a frame
-	fn process(&mut self, env: &ProcessNodeEnvironment, ports: &mut Ports);
+	fn on_process(&mut self, env: &ProcessNodeEnvironment, ports: &mut Ports);
 }
 
 pub struct ProcessNodeEnvironment {

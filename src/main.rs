@@ -2,9 +2,8 @@
 mod nodes;
 mod parse;
 mod parse_nodes;
-mod process;
+mod module;
 mod project;
-mod execution_order;
 
 fn main() {
 	project::run("./");

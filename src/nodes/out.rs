@@ -5,7 +5,7 @@ impl ProcessNode for Out {
 		(Out {}, Ports::new())
 	}
 
-	fn process(&mut self, index: usize, node_ports: &mut Vec<Ports>, env: &ProcessNodeEnvironment) {
+	fn on_process(&mut self, index: usize, node_ports: &mut Vec<Ports>, env: &ProcessNodeEnvironment) {
 		//match (&ports.inlets).get("in") {
 		//	Some(out) => {
 		//		for i in 0..env.buffer_size {

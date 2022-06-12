@@ -1,8 +1,10 @@
 pub mod sine;
+pub mod module;
 pub mod common;
 
 /// All nodes should implement this trait
 pub trait Node {
+	// TODO merayen delete?
 	fn process();
 
 	fn get_nodedata(&self) -> NodeData;

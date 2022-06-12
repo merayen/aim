@@ -24,8 +24,6 @@ pub fn init_nodes(env: &ProcessNodeEnvironment, nodes: &mut HashMap<String, Opti
 	module_ports
 }
 
-// TODO merayen create a module called "execution_order" or something, that plans the order the nodes are to be executed
-
 /// Process a single frame
 ///
 /// Execute all the nodes in a module.
@@ -34,7 +32,7 @@ pub fn process_frame(env: &ProcessNodeEnvironment, nodes: &mut HashMap<String, O
 		// TODO merayen need correct execution order here
 		match node {
 			Some(process_node) => {
-				process_node.process(env, &mut ports.get_mut(id).expect("ProcessNode does not have its Ports initialized. Forgotton init_nodes()?"));
+				process_node.on_process(env, &mut ports.get_mut(id).expect("ProcessNode does not have its Ports initialized. Forgotton init_nodes()?"));
 			}
 			None => {
 				// Node wasn't possible to parse or is unknown. Ignore it
