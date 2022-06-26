@@ -11,6 +11,7 @@ use crate::nodes;
 ///
 /// Its result can then be sent to the processing/DSP stage of the synth.
 fn parse_project(path: &str) -> Result<HashMap<String, parse_nodes::ParseResults>, String> {
+	// TODO merayen move this into ModuleNode
 	let mut modules: HashMap<String, parse_nodes::ParseResults> = HashMap::new();
 	match std::fs::read_dir(path) {
 		Ok(paths) => {

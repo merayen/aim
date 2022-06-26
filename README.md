@@ -1,8 +1,17 @@
 # AIM
 Text based music and sound design tool.
 
+## What
+- Node based synthesizer and Digital Audio Workstation
+- High performance (hopefully)
+	- Use Rust
+	- Maybe look at using LLVM JIT for further speed ups
+- "Not invented here" syndrome
+	- To get better at math
+	- Understand how DSP works
+
 ## Why
-Make music in terminal without boss knowing.
+Make music in terminal without UI.
 
 ## How
 - Use vim
@@ -11,16 +20,6 @@ Make music in terminal without boss knowing.
 
 ## Status
 Not much yet. It can parse files and output errors into them.
-
-## What
-- Node based
-- Automatic (profiling?) load balancing on CPU cores
-- High performance
-	- Use Rust
-	- Maybe look at using LLVM JIT for further speed ups
-- "Not invented here" syndrome
-	- To get better at math
-	- Understand how DSP works
 
 ## Examples
 

@@ -63,6 +63,16 @@ impl nodes::common::ProcessNode for SineNode {
 			self.position += frequency / sample_rate * std::f64::consts::PI;
 		}
 	}
+
+	fn on_create_voice(&mut self, index: usize) {
+	}
+
+	fn on_destroy_voice(&mut self, index: usize) {
+	}
+
+	fn holds_voice(&self, index: usize) -> bool {
+		false
+	}
 }
 
 #[cfg(test)]

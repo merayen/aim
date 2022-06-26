@@ -16,5 +16,15 @@ impl ProcessNode for Out {
 		//	}
 		//}
 	}
+
+	fn on_create_voice(&mut self, index: usize) {
+	}
+
+	fn on_destroy_voice(&mut self, index: usize) {
+	}
+
+	fn holds_voice(&self, index: usize) -> bool {
+		false
+	}
 }
 
