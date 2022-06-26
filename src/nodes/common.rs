@@ -101,6 +101,7 @@ pub enum PortParameter {
 
 /// Parse a parameter line that can be connected to an outlet of another node
 pub fn parse_input_parameter(text: &str) -> Result<PortParameter, String> {
+	// TODO merayen why do we parse in this module?
 	let mut splitter = text.trim().split(" ");
 	let name = splitter.next().unwrap().to_string();
 

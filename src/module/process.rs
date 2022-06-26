@@ -28,6 +28,9 @@ pub fn init_nodes(env: &ProcessNodeEnvironment, nodes: &mut HashMap<String, Opti
 ///
 /// Execute all the nodes in a module.
 pub fn process_frame(env: &ProcessNodeEnvironment, nodes: &mut HashMap<String, Option<Box<dyn ProcessNode>>>, ports: &mut HashMap<String, Ports>) {
+	// TODO merayen need to process each group nodes too
+
+	// Do the processing work
 	for (id, node) in nodes.iter_mut() {
 		// TODO merayen need correct execution order here
 		match node {
@@ -36,6 +39,18 @@ pub fn process_frame(env: &ProcessNodeEnvironment, nodes: &mut HashMap<String, O
 			}
 			None => {
 				// Node wasn't possible to parse or is unknown. Ignore it
+			}
+		}
+	}
+
+	// Now query all the nodes for any voices that we can delete
+	let mut holds_voice = false;
+	for (id, node) in nodes.iter() {
+		match node {
+			Some(process_node) => {
+				// TODO merayen
+			}
+			None => {
 			}
 		}
 	}
