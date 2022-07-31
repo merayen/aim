@@ -1,11 +1,12 @@
 use std::collections::HashMap;
+use crate::module::process;
 
 pub trait ProcessNode {
 	/// Initialize your ports here
 	fn on_init(&mut self, env: &ProcessNodeEnvironment) -> Ports;
 
 	/// Process a frame
-	fn on_process(&mut self, env: &ProcessNodeEnvironment, ports: &mut Ports);
+	fn on_process(&mut self, env: &ProcessNodeEnvironment, ports: &mut Ports, session: &process::session::Session);
 
 	/// A voice is being created
 	///
@@ -34,10 +35,18 @@ pub struct ProcessNodeEnvironment {
 	pub sample_rate: i32,
 }
 
+/// Outlet from a node
+///
+/// Contains multiple voices that are lazily allocated.
 pub struct Outlet {
+	/// Audio data. Format: [voice_index][channel_index][sample_index]
 	pub audio: Option<Vec<Vec<f32>>>,
-	pub signal: Option<Vec<f32>>,
-	pub midi: Option<Vec<u8>>,
+
+	/// Signal data. Format: [voice_index][sample_index]
+	pub signal: Option<Vec<Vec<f32>>>,
+
+	/// Midi data. Format: [voice_index][midi_index]. This probably needs to be redesigned.
+	pub midi: Option<Vec<Vec<u8>>>,
 }
 
 pub struct Inlet {
@@ -49,19 +58,29 @@ pub struct Inlet {
 }
 
 impl Outlet {
-	fn signal(buffer_size: usize) -> Self {
-		let mut signal = Vec::with_capacity(buffer_size);
-		for i in 0..buffer_size {
-			signal.push(0f32);
-		}
+	fn signal() -> Self {
 		Outlet {
+			signal: Some(Vec::new()),
 			audio: None,
-			signal: Some(signal),
 			midi: None,
 		}
 	}
 
-	// TODO merayen add audio and midi too
+	fn audio() -> Self {
+		Outlet {
+			signal: None,
+			audio: Some(Vec::new()),
+			midi: None,
+		}
+	}
+
+	fn midi() -> Self {
+		Outlet {
+			signal: None,
+			audio: None,
+			midi: Some(Vec::new()),
+		}
+	}
 }
 
 pub struct Ports {
@@ -79,7 +98,7 @@ impl Ports {
 
 	/// Create a new outlet configured to send signals
 	pub fn signal(&mut self, name: &str, env: &ProcessNodeEnvironment) {
-		self.outlets.insert(name.to_string(), Outlet::signal(env.buffer_size));
+		self.outlets.insert(name.to_string(), Outlet::signal());
 	}
 
 	/// Register an inlet

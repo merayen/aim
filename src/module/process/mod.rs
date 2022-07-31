@@ -1,9 +1,7 @@
-//! Processes a network of nodes
-//!
-//! Processes one module. If you have many modules, this needs to be called for each of them.
+pub mod session;
 
-use crate::nodes::common::{ProcessNode, ProcessNodeEnvironment, Ports};
 use std::collections::HashMap;
+use crate::nodes::common::{ProcessNode, ProcessNodeEnvironment, Ports};
 
 /// Initialize all nodes for processing
 ///
@@ -27,7 +25,7 @@ pub fn init_nodes(env: &ProcessNodeEnvironment, nodes: &mut HashMap<String, Opti
 /// Process a single frame
 ///
 /// Execute all the nodes in a module.
-pub fn process_frame(env: &ProcessNodeEnvironment, nodes: &mut HashMap<String, Option<Box<dyn ProcessNode>>>, ports: &mut HashMap<String, Ports>) {
+pub fn process_frame(env: &ProcessNodeEnvironment, nodes: &mut HashMap<String, Option<Box<dyn ProcessNode>>>, ports: &mut HashMap<String, Ports>, session: &session::Session) {
 	// TODO merayen need to process each group nodes too
 
 	// Do the processing work
@@ -35,7 +33,11 @@ pub fn process_frame(env: &ProcessNodeEnvironment, nodes: &mut HashMap<String, O
 		// TODO merayen need correct execution order here
 		match node {
 			Some(process_node) => {
-				process_node.on_process(env, &mut ports.get_mut(id).expect("ProcessNode does not have its Ports initialized. Forgotton init_nodes()?"));
+				process_node.on_process(
+					env,
+					&mut ports.get_mut(id).expect("ProcessNode does not have its Ports initialized. Forgotton init_nodes()?"),
+					session,
+				);
 			}
 			None => {
 				// Node wasn't possible to parse or is unknown. Ignore it
@@ -55,3 +57,5 @@ pub fn process_frame(env: &ProcessNodeEnvironment, nodes: &mut HashMap<String, O
 		}
 	}
 }
+
+// TODO merayen move crate::process into this module

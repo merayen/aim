@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use crate::parse_nodes;
 use crate::parse;
 use crate::nodes;
+use crate::module::process;
 
 pub fn parse(result: &mut parse_nodes::ParseResults, indent_block: &mut parse::IndentBlock) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
 	// TODO merayen this should parse a project directory, not module.rs
@@ -22,7 +23,7 @@ impl nodes::common::ProcessNode for ModuleNode {
 		nodes::common::Ports::new()
 	}
 	
-	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut nodes::common::Ports) {
+	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut nodes::common::Ports, session: &process::session::Session) {
 		// TODO merayen create initial voice if not existing
 	}
 

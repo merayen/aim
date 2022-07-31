@@ -4,6 +4,7 @@ mod parse;
 mod parse_nodes;
 mod module;
 mod project;
+mod process;
 
 fn main() {
 	project::run("./");

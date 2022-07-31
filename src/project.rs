@@ -40,7 +40,9 @@ fn start_process_loop(
 	env: &nodes::common::ProcessNodeEnvironment,
 	nodes: &mut HashMap<String, Option<Box<dyn nodes::common::ProcessNode>>>,
 	ports: &mut HashMap<String, nodes::common::Ports>,
+	session: &mut process::session::Session,
 ) {
+	// TODO merayen move to process-module
 	// TODO should probably only run the loop when reacting on commands
 	let mut frames_to_process = -1; // TODO merayen get the frames to process count from a command, like "<play 100"
 	loop { // CTRL-C this
@@ -51,7 +53,7 @@ fn start_process_loop(
 			frames_to_process -= 1;
 		}
 
-		process::process_frame(&env, nodes, ports);
+		process::process_frame(&env, nodes, ports, session);
 	}
 }
 
@@ -87,7 +89,9 @@ pub fn run(path: &str) {
 
 	let (env, mut ports) = initialize_nodes(nodes);
 
-	start_process_loop(&env, nodes, &mut ports);
+	let mut session = process::session::Session::new(64);
+
+	start_process_loop(&env, nodes, &mut ports, &mut session);
 }
 
 

@@ -1,1 +1,1 @@
-RUST_BACKTRACE=1 cargo build
+RUSTFLAGS="-Awarnings" cargo build

@@ -36,7 +36,7 @@ pub fn plan_execution_order<'a>(nodes: &'a HashMap<String, Option<Box<dyn Proces
 		remaining_nodes.remove(id);
 	}
 
-	// Follow the generators
+	// Follow the generator nodes
 	for id in generators {
 		println!("{}", id);
 	}
