@@ -66,6 +66,7 @@ fn parse_node(result: &mut ParseResults, indent_block: &mut parse::IndentBlock) 
 
 	let node = match name.as_str() {
 		"sine" => { Some(nodes::sine::parse(result, indent_block)) }
+		"out" => { Some(nodes::out::parse(result, indent_block)) }
 		_ => {
 			indent_block.text.push_str("  # ERROR: Unknown node");
 			None
@@ -229,7 +230,7 @@ e id9
 		let (result, text) = parse_module_text("
 sine id0
 	frequency 440
-out id1
+doesnotexist id1
 	amplitude 1
 		".trim());
 
@@ -237,7 +238,7 @@ out id1
 		assert_eq!(text, "
 sine id0
 	frequency 440
-out id1  # ERROR: Unknown node
+doesnotexist id1  # ERROR: Unknown node
 	amplitude 1
 		".trim());
 	}

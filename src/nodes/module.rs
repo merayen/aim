@@ -26,16 +26,6 @@ impl nodes::common::ProcessNode for ModuleNode {
 	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut nodes::common::Ports, session: &process::session::Session) {
 		// TODO merayen create initial voice if not existing
 	}
-
-	fn on_create_voice(&mut self, index: usize) {
-	}
-
-	fn on_destroy_voice(&mut self, index: usize) {
-	}
-
-	fn holds_voice(&self, index: usize) -> bool {
-		false
-	}
 }
 
 #[cfg(test)]

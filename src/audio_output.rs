@@ -109,6 +109,7 @@ impl AudioOutput {
 
 #[cfg(test)]
 mod tests {
+	#[test]
 	fn test_audio() {
 		let rate = 8000;
 		let channels = 2;

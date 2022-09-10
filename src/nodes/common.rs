@@ -7,27 +7,6 @@ pub trait ProcessNode {
 
 	/// Process a frame
 	fn on_process(&mut self, env: &ProcessNodeEnvironment, ports: &mut Ports, session: &process::session::Session);
-
-	/// A voice is being created
-	///
-	/// The parent node has decided that a new voice is to be created.
-	/// Do your setup of the new voice here.
-	///
-	/// This always happens after previous frame was processed.
-	fn on_create_voice(&mut self, index: usize);
-
-	/// A voice is being destroyed
-	///
-	/// The parent requests that a voice is to be destroyed.
-	fn on_destroy_voice(&mut self, index: usize);
-
-	/// Signals that we are still holding a voice
-	///
-	/// If this returns true, the current node group will not end the current
-	/// voice as the voice is held by this node.
-	/// When all the nodes in the group returns false, the voice will automatically
-	/// be destroyed (on_destroy_voice called on all nodes).
-	fn holds_voice(&self, index: usize) -> bool;
 }
 
 pub struct ProcessNodeEnvironment {
