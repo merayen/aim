@@ -94,6 +94,7 @@ sine
 	frequency 100
 		",
 			&env,
+			1, // Process only single frame
 		);
 
 		assert!(text == "

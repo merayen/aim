@@ -45,6 +45,7 @@ sine
 	frequency 100
 		",
 			&env,
+			1,
 		);
 
 		assert!(text == "

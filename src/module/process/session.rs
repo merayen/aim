@@ -1,4 +1,5 @@
 //! Session handling for voices of nodes
+// TODO merayen remove this module, we are simplifying
 use crate::nodes::common;
 
 pub struct Session {

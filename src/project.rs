@@ -6,7 +6,6 @@ use crate::parse;
 use crate::module::process;
 use crate::nodes;
 
-
 /// Parse a complete project and all its modules
 ///
 /// Its result can then be sent to the processing/DSP stage of the synth.
@@ -41,19 +40,19 @@ fn start_process_loop(
 	nodes: &mut HashMap<String, Option<Box<dyn nodes::common::ProcessNode>>>,
 	ports: &mut HashMap<String, nodes::common::Ports>,
 	session: &mut process::session::Session,
+	mut frames_to_process: i32,
 ) {
 	// TODO merayen move to process-module
 	// TODO should probably only run the loop when reacting on commands
-	let mut frames_to_process = -1; // TODO merayen get the frames to process count from a command, like "<play 100"
 	loop { // CTRL-C this
-		if frames_to_process == 0 {
-			break;
-		}
+		process::process_frame(&env, nodes, ports, session);
+
 		if frames_to_process > 0 {
 			frames_to_process -= 1;
+			if frames_to_process == 0 {
+				break;
+			}
 		}
-
-		process::process_frame(&env, nodes, ports, session);
 	}
 }
 
@@ -91,13 +90,21 @@ pub fn run(path: &str) {
 
 	let mut session = process::session::Session::new(64);
 
-	start_process_loop(&env, nodes, &mut ports, &mut session);
+	start_process_loop(&env, nodes, &mut ports, &mut session, -1);
 }
 
 
 /// Run a single text block of text. For debugging.
-pub fn run_single_module<'a>(text: &'a str, env: &nodes::common::ProcessNodeEnvironment) -> (parse_nodes::ParseResults, String) {
-	let (parse_results, result_text) = parse_nodes::parse_module_text(text);
+pub fn run_single_module<'a>(text: &'a str, env: &nodes::common::ProcessNodeEnvironment, frames_to_process: i32) -> (parse_nodes::ParseResults, String) {
+	let (mut parse_results, result_text) = parse_nodes::parse_module_text(text);
+
+	let nodes = &mut parse_results.nodes;
+
+	let (env, mut ports) = initialize_nodes(nodes);
+
+	let mut session = process::session::Session::new(64);
+
+	start_process_loop(&env, nodes, &mut ports, &mut session, frames_to_process);
 
 	(parse_results, result_text)
 }
