@@ -52,7 +52,7 @@ impl nodes::common::ProcessNode for SineNode {
 		ports
 	}
 	
-	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut nodes::common::Ports, session: &process::session::Session) {
+	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut nodes::common::Ports) {
 		panic!("Yay, it works"); // TODO merayen remove
 		let mut out = ports.outlets.get_mut("out");
 		let mut out_data = out.as_mut().unwrap();
@@ -60,8 +60,6 @@ impl nodes::common::ProcessNode for SineNode {
 
 		let sample_rate = env.sample_rate as f64;
 		let frequency = self.frequency as f64;
-
-		for (voice, is_used) in signal.iter_mut().zip(session.active_voices.iter()) {}
 
 		//for voice in signal {
 		//	match voice {

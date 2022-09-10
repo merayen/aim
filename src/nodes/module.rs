@@ -23,7 +23,7 @@ impl nodes::common::ProcessNode for ModuleNode {
 		nodes::common::Ports::new()
 	}
 	
-	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut nodes::common::Ports, session: &process::session::Session) {
+	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut nodes::common::Ports) {
 		// TODO merayen create initial voice if not existing
 	}
 }

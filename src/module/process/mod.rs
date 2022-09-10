@@ -1,5 +1,3 @@
-pub mod session;
-
 use std::collections::HashMap;
 use crate::nodes::common::{ProcessNode, ProcessNodeEnvironment, Ports};
 
@@ -25,7 +23,7 @@ pub fn init_nodes(env: &ProcessNodeEnvironment, nodes: &mut HashMap<String, Opti
 /// Process a single frame
 ///
 /// Execute all the nodes in a module.
-pub fn process_frame(env: &ProcessNodeEnvironment, nodes: &mut HashMap<String, Option<Box<dyn ProcessNode>>>, ports: &mut HashMap<String, Ports>, session: &session::Session) {
+pub fn process_frame(env: &ProcessNodeEnvironment, nodes: &mut HashMap<String, Option<Box<dyn ProcessNode>>>, ports: &mut HashMap<String, Ports>) {
 	// TODO merayen need to process each group nodes too
 
 	// Do the processing work
@@ -36,7 +34,6 @@ pub fn process_frame(env: &ProcessNodeEnvironment, nodes: &mut HashMap<String, O
 				process_node.on_process(
 					env,
 					&mut ports.get_mut(id).expect("ProcessNode does not have its Ports initialized. Forgotton init_nodes()?"),
-					session,
 				);
 			}
 			None => {

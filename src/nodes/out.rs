@@ -47,7 +47,7 @@ impl nodes::common::ProcessNode for OutNode {
 		ports
 	}
 
-	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut nodes::common::Ports, session: &process::session::Session) {
+	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut nodes::common::Ports) {
 		panic!("Yay, it works"); // TODO merayen remove
 		//match (&ports.inlets).get("in") {
 		//	Some(out) => {

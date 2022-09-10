@@ -39,13 +39,12 @@ fn start_process_loop(
 	env: &nodes::common::ProcessNodeEnvironment,
 	nodes: &mut HashMap<String, Option<Box<dyn nodes::common::ProcessNode>>>,
 	ports: &mut HashMap<String, nodes::common::Ports>,
-	session: &mut process::session::Session,
 	mut frames_to_process: i32,
 ) {
 	// TODO merayen move to process-module
 	// TODO should probably only run the loop when reacting on commands
 	loop { // CTRL-C this
-		process::process_frame(&env, nodes, ports, session);
+		process::process_frame(&env, nodes, ports);
 
 		if frames_to_process > 0 {
 			frames_to_process -= 1;
@@ -88,9 +87,7 @@ pub fn run(path: &str) {
 
 	let (env, mut ports) = initialize_nodes(nodes);
 
-	let mut session = process::session::Session::new(64);
-
-	start_process_loop(&env, nodes, &mut ports, &mut session, -1);
+	start_process_loop(&env, nodes, &mut ports, -1);
 }
 
 
@@ -102,9 +99,7 @@ pub fn run_single_module<'a>(text: &'a str, env: &nodes::common::ProcessNodeEnvi
 
 	let (env, mut ports) = initialize_nodes(nodes);
 
-	let mut session = process::session::Session::new(64);
-
-	start_process_loop(&env, nodes, &mut ports, &mut session, frames_to_process);
+	start_process_loop(&env, nodes, &mut ports, frames_to_process);
 
 	(parse_results, result_text)
 }
