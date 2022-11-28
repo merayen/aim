@@ -107,8 +107,10 @@ impl AudioOutput {
 	}
 }
 
+
 #[cfg(test)]
 mod tests {
+	use super::*;
 	#[test]
 	fn test_audio() {
 		let rate = 8000;
@@ -121,10 +123,10 @@ mod tests {
 			buffer[i * 2 + 1] = (2f32 * std::f32::consts::PI * 440f32 * ((i as f32) / (rate as f32))).sin();
 		}
 
-		let ao = audio_output::AudioOutput::new(channels, rate);
+		let ao = AudioOutput::new(channels, rate);
 
 		ao.output(&buffer);
-		std::thread::sleep(std::time::Duration::new(2, 0));
+		std::thread::sleep(std::time::Duration::new(1, 0));
 		ao.output(&buffer);
 		std::thread::sleep(std::time::Duration::new(2, 0));
 		ao.end();
