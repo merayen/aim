@@ -8,28 +8,24 @@ use crate::parse_nodes;
 
 struct OutNode {}
 
-pub fn parse(result: &mut parse_nodes::ParseResults, indent_block: &mut parse::IndentBlock) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
-	let mut frequency = 440f32;
-
-	for parameter_indent_block in &mut indent_block.children {
-		match nodes::common::parse_node_parameter(&parameter_indent_block.text) {
-			Ok(nodes::common::PortParameter::Constant {name, value}) => {
+pub fn new(result: &mut parse_nodes::ParseResults, indent_block: &mut parse::IndentBlock) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
+	for indent_block in &mut indent_block.children {
+		match nodes::common::parse_node_parameter(&indent_block.text) {
+			Ok(nodes::common::PortParameter::Inlet {name, node_id, outlet}) => {
 				match name.as_str() {
-					"frequency" => {
-						frequency = value.parse::<f32>().unwrap();
+					"in" => {
+						// TODO merayen connect this or...?
 					}
 					_ => {
-						parameter_indent_block.text.push_str("  # ERROR: Unknown parameter");
+						indent_block.text.push_str("  # ERROR: Unknown inlet")
 					}
 				}
 			}
-			Ok(nodes::common::PortParameter::Inlet {name, node_id, outlet}) => {
-			}
 			Err(message) => {
-				parameter_indent_block.text.push_str(&("  # ERROR: ".to_string() + &message));
+				indent_block.text.push_str(&("  # ERROR: ".to_string() + &message));
 			}
 			_ => {
-				parameter_indent_block.text.push_str("  # ERROR: Invalid parameter");
+				indent_block.text.push_str("  # ERROR: Invalid parameter");
 			}
 		}
 	}

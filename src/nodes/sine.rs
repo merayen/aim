@@ -4,8 +4,10 @@ use crate::parse;
 use crate::nodes;
 use crate::module::process;
 
-pub fn parse(result: &mut parse_nodes::ParseResults, indent_block: &mut parse::IndentBlock) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
+pub fn new(result: &mut parse_nodes::ParseResults, indent_block: &mut parse::IndentBlock) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
 	let mut frequency = 440f32;
+	let mut frequency_in_name = None;
+	let mut frequency_in_id = None;
 
 	for parameter_indent_block in &mut indent_block.children {
 		match nodes::common::parse_node_parameter(&parameter_indent_block.text) {
@@ -20,6 +22,15 @@ pub fn parse(result: &mut parse_nodes::ParseResults, indent_block: &mut parse::I
 				}
 			}
 			Ok(nodes::common::PortParameter::Inlet {name, node_id, outlet}) => {
+				match name.as_str() {
+					"frequency" => {
+						frequency_in_name = Some(name);
+						frequency_in_id = Some(node_id);
+					}
+					_ => {
+						parameter_indent_block.text.push_str("  # ERROR: Unknown parameter");
+					}
+				}
 			}
 			Err(message) => {
 				parameter_indent_block.text.push_str(&("  # ERROR: ".to_string() + &message));
@@ -32,7 +43,9 @@ pub fn parse(result: &mut parse_nodes::ParseResults, indent_block: &mut parse::I
 
 	Box::new(
 		SineNode {
-			frequency: frequency,
+			frequency,
+			frequency_in_name,
+			frequency_in_id,
 			position: 0f64,
 		}
 	)
@@ -40,6 +53,8 @@ pub fn parse(result: &mut parse_nodes::ParseResults, indent_block: &mut parse::I
 
 pub struct SineNode {
 	frequency: f32,
+	frequency_in_id: Option<String>,  // ID of the other node
+	frequency_in_name: Option<String>,  // Name of the port of the other node
 	position: f64,
 }
 
