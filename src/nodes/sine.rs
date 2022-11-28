@@ -5,7 +5,7 @@ use crate::nodes;
 use crate::module::process;
 use crate::module;
 
-pub fn new(module: &mut module::Module, indent_block: &mut parse::IndentBlock) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
+pub fn new(indent_block: &mut parse::IndentBlock, ports: &mut nodes::common::Ports) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
 	let mut frequency = 440f32;
 	let mut frequency_in_name = None;
 	let mut frequency_in_id = None;
@@ -68,7 +68,7 @@ impl nodes::common::ProcessNode for SineNode {
 		ports
 	}
 	
-	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, inlets: &HashMap<String, nodes::common::Inlet>, outlets: &mut HashMap<String, nodes::common::Outlet>) {
+	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut HashMap<String, nodes::common::Ports>) {
 		//let mut out: Option<&mut nodes::common::Outlet> = outlets.get_mut("out");
 		//let out_data: &mut nodes::common::Outlet = out.as_mut().unwrap();
 		//let out_signal: &mut Vec<Vec<f32>> = out_data.signal.as_mut().unwrap();

@@ -8,7 +8,7 @@ pub trait ProcessNode {
 	fn on_init(&mut self, env: &ProcessNodeEnvironment) -> Ports;
 
 	/// Process a frame
-	fn on_process(&mut self, env: &ProcessNodeEnvironment, inlets: &HashMap<String, nodes::common::Inlet>, outlet: &mut HashMap<String, nodes::common::Outlet>);
+	fn on_process(&mut self, env: &ProcessNodeEnvironment, ports: &mut HashMap<String, nodes::common::Ports>);
 }
 
 pub struct ProcessNodeEnvironment {
@@ -32,7 +32,7 @@ pub struct Outlet {
 
 pub struct Inlet {
 	/// Index to the node that this Inlet is connected to
-	node_index: usize, 
+	node_index: usize, // TODO merayen this should be node id instead
 
 	/// Name of the outlet of the node connected to this Inlet
 	outlet_name: String,

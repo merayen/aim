@@ -14,8 +14,7 @@ pub struct Module {
 	/// A list of node ids
 	pub execution_order: Vec<String>,
 
-	pub inlets: HashMap<String, nodes::common::Inlet>,
-	pub outlets: HashMap<String, nodes::common::Outlet>,
+	pub ports: HashMap<String, nodes::common::Ports>,
 
 	/// Errors that are shown in the stdout of the synth
 	pub errors: Vec<String>,
@@ -26,8 +25,7 @@ impl Module {
 		Module {
 			nodes: HashMap::new(),
 			execution_order: Vec::new(),
-			inlets: HashMap::new(),
-			outlets: HashMap::new(),
+			ports: HashMap::new(),
 			errors: Vec::new(),
 		}
 	}

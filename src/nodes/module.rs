@@ -24,7 +24,7 @@ impl nodes::common::ProcessNode for ModuleNode {
 		nodes::common::Ports::new()
 	}
 	
-	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, inlets: &HashMap<String, nodes::common::Inlet>, outlets: &mut HashMap<String, nodes::common::Outlet>) {
+	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut HashMap<String, nodes::common::Ports>) {
 		// TODO merayen create initial voice if not existing
 	}
 }

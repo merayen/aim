@@ -57,9 +57,11 @@ fn parse_node_header(text: &String) -> (String, String) {
 fn parse_node(module: &mut module::Module, indent_block: &mut parse::IndentBlock) {
 	let (name, id) = parse_node_header(&indent_block.text);
 
+	let mut ports = nodes::common::Ports::new();
+
 	let node = match name.as_str() {
-		"sine" => { Some(nodes::sine::new(module, indent_block)) }
-		"out" => { Some(nodes::out::new(module, indent_block)) }
+		"sine" => { Some(nodes::sine::new(indent_block, &mut ports)) }
+		"out" => { Some(nodes::out::new(indent_block, &mut ports)) }
 		_ => {
 			indent_block.text.push_str("  # ERROR: Unknown node");
 			None
@@ -67,7 +69,8 @@ fn parse_node(module: &mut module::Module, indent_block: &mut parse::IndentBlock
 	};
 
 	assert!(!module.nodes.contains_key(&id), "ID {} has already been used", id);
-	module.nodes.insert(id, node);
+	module.nodes.insert(id.clone(), node);
+	module.ports.insert(id, ports);
 }
 
 

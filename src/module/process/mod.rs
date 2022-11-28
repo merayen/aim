@@ -14,8 +14,7 @@ pub fn process_frame(env: &ProcessNodeEnvironment, module: &mut module::Module) 
 			Some(process_node) => {
 				process_node.on_process(
 					env,
-					&module.inlets,
-					&mut module.outlets,
+					&mut module.ports,
 				);
 			}
 			None => {

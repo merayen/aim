@@ -10,7 +10,7 @@ use crate::parse_nodes;
 
 struct OutNode {}
 
-pub fn new(module: &mut module::Module, indent_block: &mut parse::IndentBlock) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
+pub fn new(indent_block: &mut parse::IndentBlock, ports: &mut nodes::common::Ports) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
 	for indent_block in &mut indent_block.children {
 		match nodes::common::parse_node_parameter(&indent_block.text) {
 			Ok(nodes::common::PortParameter::Inlet {name, node_id, outlet}) => {
@@ -45,7 +45,7 @@ impl nodes::common::ProcessNode for OutNode {
 		ports
 	}
 
-	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, inlets: &HashMap<String, nodes::common::Inlet>, outlets: &mut HashMap<String, nodes::common::Outlet>) {
+	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut HashMap<String, nodes::common::Ports>) {
 		// TODO merayen send data to speakers
 	}
 }
