@@ -113,8 +113,14 @@ pub fn parse_node_parameter(text: &str) -> Result<PortParameter, String> {
 		Some("<-") => {
 			match splitter.next() {
 				Some(source) => {
-					let (node_id, outlet) = source.split_once(":").unwrap();
-					Ok(PortParameter::Inlet {name: name, node_id: node_id.to_string(), outlet: outlet.to_string()})
+					match source.split_once(":") {
+						Some((node_id, outlet)) => {
+							Ok(PortParameter::Inlet {name: name, node_id: node_id.to_string(), outlet: outlet.to_string()})
+						}
+						None => {
+							Err("Invalid node:port reference".to_string())
+						}
+					}
 				}
 				_ => {
 					Err("Missing id of the connecting node".to_string())

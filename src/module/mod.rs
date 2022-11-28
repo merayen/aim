@@ -9,7 +9,7 @@ pub struct Module {
 	/// ProcessNodes configured from the module
 	pub nodes: HashMap<String, Option<Box<dyn nodes::common::ProcessNode>>>,
 
-	/// In which order the nodes should be executed
+	/// In which order the nodes should be executed in this module
 	///
 	/// A list of node ids
 	pub execution_order: Vec<String>,
@@ -28,5 +28,9 @@ impl Module {
 			ports: HashMap::new(),
 			errors: Vec::new(),
 		}
+	}
+
+	pub fn is_ok(&self) -> bool {
+		self.errors.len() == 1
 	}
 }

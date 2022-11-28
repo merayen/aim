@@ -4,45 +4,55 @@
 //! performance issues.
 use crate::nodes::common::{ProcessNode, Ports};
 use crate::project;
+use crate::module;
 use std::collections::{HashMap, HashSet};
 
 /// Plans in which order nodes in a module should be executed
 ///
 /// Returns the indexes in the input array that the nodes should be executed.
-pub fn plan_execution_order<'a>(nodes: &'a HashMap<String, Option<Box<dyn ProcessNode>>>, ports: &HashMap<String, Ports>) -> Vec<&'a String> {
-	let mut result: Vec<&String> = Vec::with_capacity(nodes.len());
+pub fn plan_execution_order(module: &mut module::Module) {
+	assert_eq!(module.execution_order.len(), 0);
 
-	let mut remaining_nodes: HashSet<String> = nodes.keys().cloned().collect();
-
-	// Find nodes that are not connected
-	let mut not_connected_nodes: Vec<&String> = Vec::new();
-	let mut generators: Vec<&String> = Vec::new();
-	for (id, node) in nodes {
-		let ports = &ports[id];
-
-		if ports.inlets.len() > 0 {
-			// A node dependent on other ones.
-			// We will handle those below.
-			continue;
+	// Find all the right-most nodes (e.g module outputs)
+	// They will be executed last.
+	let mut right_most = Vec::new();
+	for (node_id, ports) in &module.ports {
+		if ports.outlets.len() == 0 {
+			right_most.push(node_id);
 		}
-
-		if ports.outlets.len() > 0 {
-			// Generator node
-			generators.push(id);
-		} else {
-			// Node not connected to anything
-			not_connected_nodes.push(id);
-		}
-		remaining_nodes.remove(id);
 	}
 
-	// Follow the generator nodes
-	for id in generators {
-		println!("{}", id);
+	// Add them to the ordered list.
+	// The first ones are now the latest one to execute.
+	let mut reversed_result: Vec<String> = Vec::new();
+	for node_id in &right_most {
+		reversed_result.push(node_id.to_string());
 	}
 
-	result.extend(not_connected_nodes.iter());
-	result
+	// TODO merayen check for circular dependencies, we don't support them
+
+	// Then trace those right-most nodes to the left
+	for node_id in &right_most {
+		let inlets = &module.ports[node_id.clone()].inlets;
+		for (left_node_id, inlet_option) in inlets {
+			match inlet_option {
+				Some(inlet) => {
+					let index = reversed_result.iter().position(|x| &x == node_id).unwrap();
+					println!("{}", index);
+					//reversed_result.insert(index, left_node_id.clone());
+				}
+				None => {
+				}
+			}
+		}
+	}
+
+	reversed_result.reverse();
+
+	// Set the result onto the Module
+	for node_id in &reversed_result {
+		module.execution_order.push(node_id.clone());
+	}
 }
 
 mod tests {
@@ -51,25 +61,22 @@ mod tests {
 	use crate::parse_nodes;
 
 	#[test]
-	#[ignore]
 	fn check_execution_order_of_nodes() {
-		let (parse_results, something) = parse_nodes::parse_module_text("
+		let (mut module, _) = parse_nodes::parse_module_text("
 sine id1
 	frequency 440
 sine id2
-	frequency <- id1 out
+	frequency <- id1:out
 sine id3
-	frequency <- id1 out
+	frequency <- id1:out
 sine id4
 	frequency 440
 		".trim());
 
-		let mut nodes: HashMap<String, Option<Box<dyn ProcessNode>>> = parse_results.nodes;
+		assert!(!module.is_ok());
 
-		for node in nodes.values() {}
+		plan_execution_order(&mut module);
 
-		let result = plan_execution_order(&mut module);
-
-		assert_eq!(result, vec!["id1", "id2", "id3", "id4"]);
+		assert_eq!(module.execution_order, vec!["id1", "id2", "id3", "id4"]);
 	}
 }
