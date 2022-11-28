@@ -62,7 +62,7 @@ pub fn initialize_nodes(nodes: &mut HashMap<String, Option<Box<dyn nodes::common
 		sample_rate: 44100,
 	};
 	
-	let mut ports: HashMap<String, nodes::common::Ports> = process::init_nodes(&env, nodes);
+	let ports: HashMap<String, nodes::common::Ports> = process::init_nodes(&env, nodes);
 
 	(env, ports)
 }
@@ -70,17 +70,23 @@ pub fn initialize_nodes(nodes: &mut HashMap<String, Option<Box<dyn nodes::common
 /// Parse project and execute any commands and then run it
 ///
 /// * `frame_count` - How many frames to process. Below 0 means "infinite"
-pub fn run(path: &str) {
+pub fn run(path: &str) -> bool {
 	let mut modules = parse_project(path).expect("Could not parse project");
 
 	// Print errors that came up
+	let mut has_errors = false;
 	for (filename, module) in &modules {
 		for error in &module.errors {
-			println!("{}", error);
+			println!("{}: {}", filename, error);
+			has_errors = true;
 		}
 	}
 
-	assert!(modules.len() == 1, "Only support 1 module for now"); // TODO merayen support multiple modules
+	if has_errors {
+		return false;
+	}
+
+	assert_eq!(modules.len(), 1, "Only support 1 module for now"); // TODO merayen support multiple modules
 
 	let parse_results: &mut parse_nodes::ParseResults = modules.values_mut().next().unwrap();
 	let nodes = &mut parse_results.nodes;
@@ -88,11 +94,13 @@ pub fn run(path: &str) {
 	let (env, mut ports) = initialize_nodes(nodes);
 
 	start_process_loop(&env, nodes, &mut ports, -1);
+
+	return true;
 }
 
 
 /// Run a single text block of text. For debugging.
-pub fn run_single_module<'a>(text: &'a str, env: &nodes::common::ProcessNodeEnvironment, frames_to_process: i32) -> (parse_nodes::ParseResults, String) {
+pub fn run_single_module(text: &str, env: &nodes::common::ProcessNodeEnvironment, frames_to_process: i32) -> (parse_nodes::ParseResults, String) {
 	let (mut parse_results, result_text) = parse_nodes::parse_module_text(text);
 
 	let nodes = &mut parse_results.nodes;
@@ -113,8 +121,8 @@ mod tests {
 	fn parsing_example_project() {
 		let modules = parse_project("example_project/").unwrap();
 
-		assert!(modules.len() == 1);
+		assert_eq!(modules.len(), 1);
 		assert!(modules.contains_key("example_project/main.txt"));
-		assert!(modules["example_project/main.txt"].nodes.len() == 4);
+		assert_eq!(modules["example_project/main.txt"].nodes.len(), 4);
 	}
 }

@@ -48,15 +48,21 @@ impl nodes::common::ProcessNode for OutNode {
 	}
 
 	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut nodes::common::Ports) {
-		panic!("Yay, it works"); // TODO merayen remove
-		//match (&ports.inlets).get("in") {
-		//	Some(out) => {
-		//		for i in 0..env.buffer_size {
-		//		}
-		//	}
-		//	None => {
-		//		// TODO merayen send empty data to mixer
-		//	}
-		//}
+		// TODO merayen send data to speakers
+		match (&ports.inlets).get("in") {
+			Some(out) => {
+				match out.as_ref() {
+					Some(v) => {
+						panic!("Virker!"); // TODO merayen remove
+					}
+					None => {
+						// TODO merayen what does it mean if we get here?
+					}
+				}
+			}
+			None => {
+				// TODO merayen send empty data to mixer
+			}
+		}
 	}
 }

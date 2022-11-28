@@ -15,11 +15,9 @@ score
 
 sine IDa
 	frequency 440
-	outlet
-		out
+	out -> IDb:in
 
 out IDb
 	volume 50%
 	port in
-	inlet
-		in IDa_out
+	in <- IDa:out

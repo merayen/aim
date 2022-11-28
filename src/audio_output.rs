@@ -57,7 +57,7 @@ impl AudioOutput {
 				let default_driver = ao_default_driver_id();
 				device = ao_open_live(default_driver, &mut format, std::ptr::null_mut());
 
-				assert!(device != std::ptr::null_mut(), "Device is null");
+				assert_ne!(device, std::ptr::null_mut(), "Device is null");
 			}
 
 			'outer: loop {

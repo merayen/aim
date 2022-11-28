@@ -53,25 +53,26 @@ impl nodes::common::ProcessNode for SineNode {
 	}
 	
 	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut nodes::common::Ports) {
-		panic!("Yay, it works"); // TODO merayen remove
-		let mut out = ports.outlets.get_mut("out");
-		let mut out_data = out.as_mut().unwrap();
-		let mut signal = out_data.signal.as_mut().unwrap();
+		let mut out: Option<&mut nodes::common::Outlet> = ports.outlets.get_mut("out");
+		let out_data: &mut nodes::common::Outlet = out.as_mut().unwrap();
+		let out_signal: &mut Vec<Vec<f32>> = out_data.signal.as_mut().unwrap();
 
 		let sample_rate = env.sample_rate as f64;
 		let frequency = self.frequency as f64;
 
-		//for voice in signal {
-		//	match voice {
-		//		Some(voice_signal) => {
-		//			for i in 0..env.buffer_size {
-		//				voice_signal[i] = 1337f32;
-		//				self.position += frequency / sample_rate * std::f64::consts::PI;
-		//			}
-		//		}
-		//		None => {}
-		//	}
-		//}
+		// TODO merayen implement handling of input data
+
+		if out_signal.len() == 0 {
+			// No output voice. Create one
+			out_signal.push(vec![0f32; env.buffer_size]);
+		}
+
+		for voice in out_signal {
+			for i in 0..env.buffer_size {
+				voice[i] = 1337f32;
+				self.position += frequency / sample_rate * std::f64::consts::PI;
+			}
+		}
 	}
 }
 

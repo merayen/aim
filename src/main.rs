@@ -8,5 +8,5 @@ mod process;
 mod audio_output;
 
 fn main() {
-	project::run("./");
+	project::run("./example_project/");
 }

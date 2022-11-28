@@ -63,6 +63,7 @@ impl Outlet {
 }
 
 pub struct Ports {
+	/// HashMap containing name of input port and Some(Inlet) if connected(?)
 	pub inlets: HashMap<String, Option<Inlet>>,
 	pub outlets: HashMap<String, Outlet>,
 }
@@ -82,6 +83,7 @@ impl Ports {
 
 	/// Register an inlet
 	pub fn inlet(&mut self, name: &str) {
+		// TODO merayen does anything connect to the inlet?
 		self.inlets.insert(name.to_string(), None);
 	}
 }
@@ -109,6 +111,7 @@ pub fn parse_input_parameter(text: &str) -> Result<PortParameter, String> {
 				Some(node_id) => {
 					match splitter.next() {
 						Some(outlet) => {
+							panic!("Yay, it works"); // TODO merayen remove
 							Ok(PortParameter::Inlet {name: name, node_id: node_id.to_string(), outlet: outlet.to_string()})
 						}
 						_ => {
@@ -126,6 +129,7 @@ pub fn parse_input_parameter(text: &str) -> Result<PortParameter, String> {
 				Some(node_id) => {
 					match splitter.next() {
 						Some(inlet) => {
+							panic!("Yay, it works"); // TODO merayen remove
 							Ok(PortParameter::Outlet {name: name, node_id: node_id.to_string(), inlet: inlet.trim().to_string()})
 						}
 						_ => {
@@ -139,6 +143,7 @@ pub fn parse_input_parameter(text: &str) -> Result<PortParameter, String> {
 			}
 		}
 		Some(v) => {
+			println!("Constant on port: {}", v); // TODO merayen remove
 			Ok(
 				PortParameter::Constant {
 					name: name,
@@ -155,6 +160,7 @@ pub fn parse_input_parameter(text: &str) -> Result<PortParameter, String> {
 	}
 }
 
+#[cfg(test)]
 mod tests {
 	use super::*;
 
