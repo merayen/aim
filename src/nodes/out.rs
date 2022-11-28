@@ -16,7 +16,7 @@ pub fn new(indent_block: &mut parse::IndentBlock, ports: &mut nodes::common::Por
 			Ok(nodes::common::PortParameter::Inlet {name, node_id, outlet}) => {
 				match name.as_str() {
 					"in" => {
-						// TODO merayen connect this or...?
+						&ports.inlets.insert(name, Some(nodes::common::Inlet {node_id, outlet}) );
 					}
 					_ => {
 						indent_block.text.push_str("  # ERROR: Unknown inlet")

@@ -32,10 +32,10 @@ pub struct Outlet {
 
 pub struct Inlet {
 	/// Index to the node that this Inlet is connected to
-	node_index: usize, // TODO merayen this should be node id instead
+	pub node_id: String,
 
 	/// Name of the outlet of the node connected to this Inlet
-	outlet_name: String,
+	pub outlet: String,
 }
 
 impl Outlet {
@@ -112,16 +112,9 @@ pub fn parse_node_parameter(text: &str) -> Result<PortParameter, String> {
 	match splitter.next() {
 		Some("<-") => {
 			match splitter.next() {
-				Some(node_id) => {
-					match splitter.next() {
-						Some(outlet) => {
-							panic!("Yay, it works"); // TODO merayen remove
-							Ok(PortParameter::Inlet {name: name, node_id: node_id.to_string(), outlet: outlet.to_string()})
-						}
-						_ => {
-							Err("Missing name of port of the connecting node".to_string())
-						}
-					}
+				Some(source) => {
+					let (node_id, outlet) = source.split_once(":").unwrap();
+					Ok(PortParameter::Inlet {name: name, node_id: node_id.to_string(), outlet: outlet.to_string()})
 				}
 				_ => {
 					Err("Missing id of the connecting node".to_string())

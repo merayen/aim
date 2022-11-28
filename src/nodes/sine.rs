@@ -7,8 +7,6 @@ use crate::module;
 
 pub fn new(indent_block: &mut parse::IndentBlock, ports: &mut nodes::common::Ports) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
 	let mut frequency = 440f32;
-	let mut frequency_in_name = None;
-	let mut frequency_in_id = None;
 
 	for parameter_indent_block in &mut indent_block.children {
 		match nodes::common::parse_node_parameter(&parameter_indent_block.text) {
@@ -25,8 +23,7 @@ pub fn new(indent_block: &mut parse::IndentBlock, ports: &mut nodes::common::Por
 			Ok(nodes::common::PortParameter::Inlet {name, node_id, outlet}) => {
 				match name.as_str() {
 					"frequency" => {
-						frequency_in_name = Some(name);
-						frequency_in_id = Some(node_id);
+						ports.inlets.insert(name, Some(nodes::common::Inlet { node_id, outlet }));
 					}
 					_ => {
 						parameter_indent_block.text.push_str("  # ERROR: Unknown parameter");
@@ -45,8 +42,6 @@ pub fn new(indent_block: &mut parse::IndentBlock, ports: &mut nodes::common::Por
 	Box::new(
 		SineNode {
 			frequency,
-			frequency_in_name,
-			frequency_in_id,
 			position: 0f64,
 		}
 	)
@@ -54,8 +49,6 @@ pub fn new(indent_block: &mut parse::IndentBlock, ports: &mut nodes::common::Por
 
 pub struct SineNode {
 	frequency: f32,
-	frequency_in_id: Option<String>,  // ID of the other node
-	frequency_in_name: Option<String>,  // Name of the port of the other node
 	position: f64,
 }
 
