@@ -100,7 +100,7 @@ pub enum PortParameter {
 }
 
 /// Parse a parameter line that can be connected to an outlet of another node
-pub fn parse_input_parameter(text: &str) -> Result<PortParameter, String> {
+pub fn parse_node_parameter(text: &str) -> Result<PortParameter, String> {
 	// TODO merayen why do we parse in this module?
 	let mut splitter = text.trim().split(" ");
 	let name = splitter.next().unwrap().to_string();
@@ -166,7 +166,7 @@ mod tests {
 
 	#[test]
 	fn parsing_input_parameter() {
-		let result = parse_input_parameter("frequency 440 test 123");
+		let result = parse_node_parameter("frequency 440 test 123");
 
 		match result {
 			Ok(PortParameter::Constant {name, value}) => {
@@ -181,7 +181,7 @@ mod tests {
 			}
 		}
 
-		let result = parse_input_parameter("frequency <- id1 out");
+		let result = parse_node_parameter("frequency <- id1 out");
 		match result {
 			Ok(PortParameter::Inlet {name, node_id, outlet}) => {
 				assert_eq!(name, "frequency");
@@ -196,7 +196,7 @@ mod tests {
 			}
 		}
 
-		let result = parse_input_parameter("frequency -> id1 in");
+		let result = parse_node_parameter("frequency -> id1 in");
 		match result {
 			Ok(PortParameter::Outlet {name, node_id, inlet}) => {
 				assert_eq!(name, "frequency");

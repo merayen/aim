@@ -12,7 +12,7 @@ pub fn parse(result: &mut parse_nodes::ParseResults, indent_block: &mut parse::I
 	let mut frequency = 440f32;
 
 	for parameter_indent_block in &mut indent_block.children {
-		match nodes::common::parse_input_parameter(&parameter_indent_block.text) {
+		match nodes::common::parse_node_parameter(&parameter_indent_block.text) {
 			Ok(nodes::common::PortParameter::Constant {name, value}) => {
 				match name.as_str() {
 					"frequency" => {
