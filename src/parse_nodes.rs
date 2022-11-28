@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 use crate::parse;
 use crate::nodes;
+use crate::module;
 
 
 /// A node that parses its .txt-file
@@ -15,14 +16,6 @@ trait ParseNode {
 	fn parse(text_consumer: parse::IndentBlock);
 }
 
-
-pub struct ParseResults {
-	/// Errors that are shown in the stdout of the synth
-	pub errors: Vec<String>,
-
-	/// ProcessNodes configured from the module
-	pub nodes: HashMap<String, Option<Box<dyn nodes::common::ProcessNode>>>,
-}
 
 pub struct Command { // TODO merayen should we use < or [? Should commands and parameters have different characters?
 	/// The command text excluding the `<` and `>` sign
@@ -61,42 +54,39 @@ fn parse_node_header(text: &String) -> (String, String) {
 }
 
 
-fn parse_node(result: &mut ParseResults, indent_block: &mut parse::IndentBlock) {
+fn parse_node(module: &mut module::Module, indent_block: &mut parse::IndentBlock) {
 	let (name, id) = parse_node_header(&indent_block.text);
 
 	let node = match name.as_str() {
-		"sine" => { Some(nodes::sine::new(result, indent_block)) }
-		"out" => { Some(nodes::out::new(result, indent_block)) }
+		"sine" => { Some(nodes::sine::new(module, indent_block)) }
+		"out" => { Some(nodes::out::new(module, indent_block)) }
 		_ => {
 			indent_block.text.push_str("  # ERROR: Unknown node");
 			None
 		}
 	};
 
-	assert!(!result.nodes.contains_key(&id), "ID {} has already been used", id);
-	result.nodes.insert(id, node);
+	assert!(!module.nodes.contains_key(&id), "ID {} has already been used", id);
+	module.nodes.insert(id, node);
 }
 
 
 /// Parse a module, e.g main.txt, verify, autocomplete and return changed text.
 ///
 /// Will return error messages back into the file.
-pub fn parse_module_text(raw_text: &str) -> (ParseResults, String) {
+pub fn parse_module_text(raw_text: &str) -> (module::Module, String) {
 	let text = initialize_nodes(raw_text);
 	let owned_text = text.to_owned();
 	let mut top_indent_block = parse::IndentBlock::parse_text(&owned_text);
 
-	let mut result = ParseResults {
-		errors: Vec::new(),
-		nodes: HashMap::new(),
-	};
+	let mut module = module::Module::new();
 
 	// Iterate each top level, which represents node headers (name + id)
 	for indent_block in &mut top_indent_block.children {
-		parse_node(&mut result, indent_block);
+		parse_node(&mut module, indent_block);
 	}
 
-	(result, top_indent_block.to_string())
+	(module, top_indent_block.to_string())
 }
 
 

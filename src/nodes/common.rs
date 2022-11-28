@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 use crate::module::process;
+use crate::module;
+use crate::nodes;
 
 pub trait ProcessNode {
 	/// Initialize your ports here
 	fn on_init(&mut self, env: &ProcessNodeEnvironment) -> Ports;
 
 	/// Process a frame
-	fn on_process(&mut self, env: &ProcessNodeEnvironment, ports: &mut Ports);
+	fn on_process(&mut self, env: &ProcessNodeEnvironment, inlets: &HashMap<String, nodes::common::Inlet>, outlet: &mut HashMap<String, nodes::common::Outlet>);
 }
 
 pub struct ProcessNodeEnvironment {
@@ -62,6 +64,8 @@ impl Outlet {
 	}
 }
 
+
+/// Ports for a node
 pub struct Ports {
 	/// HashMap containing name of input port and Some(Inlet) if connected(?)
 	pub inlets: HashMap<String, Option<Inlet>>,

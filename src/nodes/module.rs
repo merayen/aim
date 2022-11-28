@@ -6,8 +6,9 @@ use crate::parse_nodes;
 use crate::parse;
 use crate::nodes;
 use crate::module::process;
+use crate::module;
 
-pub fn parse(result: &mut parse_nodes::ParseResults, indent_block: &mut parse::IndentBlock) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
+pub fn parse(result: &mut module::Module, indent_block: &mut parse::IndentBlock) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
 	// TODO merayen this should parse a project directory, not module.rs
 	Box::new(
 		ModuleNode {
@@ -23,7 +24,7 @@ impl nodes::common::ProcessNode for ModuleNode {
 		nodes::common::Ports::new()
 	}
 	
-	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut nodes::common::Ports) {
+	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, inlets: &HashMap<String, nodes::common::Inlet>, outlets: &mut HashMap<String, nodes::common::Outlet>) {
 		// TODO merayen create initial voice if not existing
 	}
 }

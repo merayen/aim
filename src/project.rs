@@ -4,14 +4,15 @@ use std::collections::HashMap;
 use crate::parse_nodes;
 use crate::parse;
 use crate::module::process;
+use crate::module;
 use crate::nodes;
 
 /// Parse a complete project and all its modules
 ///
 /// Its result can then be sent to the processing/DSP stage of the synth.
-fn parse_project(path: &str) -> Result<HashMap<String, parse_nodes::ParseResults>, String> {
+fn parse_project(path: &str) -> Result<HashMap<String, module::Module>, String> {
 	// TODO merayen move this into ModuleNode
-	let mut modules: HashMap<String, parse_nodes::ParseResults> = HashMap::new();
+	let mut modules: HashMap<String, module::Module> = HashMap::new();
 	match std::fs::read_dir(path) {
 		Ok(paths) => {
 			for x in paths {
@@ -35,16 +36,15 @@ fn parse_project(path: &str) -> Result<HashMap<String, parse_nodes::ParseResults
 }
 
 
-fn start_process_loop(
+fn start_process_loop( // TODO merayen change signature to match caller
 	env: &nodes::common::ProcessNodeEnvironment,
-	nodes: &mut HashMap<String, Option<Box<dyn nodes::common::ProcessNode>>>,
-	ports: &mut HashMap<String, nodes::common::Ports>,
+	module: &mut module::Module,
 	mut frames_to_process: i32,
 ) {
 	// TODO merayen move to process-module
 	// TODO should probably only run the loop when reacting on commands
 	loop { // CTRL-C this
-		process::process_frame(&env, nodes, ports);
+		process::process_frame(&env, module);
 
 		if frames_to_process > 0 {
 			frames_to_process -= 1;
@@ -55,17 +55,6 @@ fn start_process_loop(
 	}
 }
 
-
-pub fn initialize_nodes(nodes: &mut HashMap<String, Option<Box<dyn nodes::common::ProcessNode>>>) -> (nodes::common::ProcessNodeEnvironment, HashMap<String, nodes::common::Ports>) {
-	let env = nodes::common::ProcessNodeEnvironment { // TODO merayen move out
-		buffer_size: 8,
-		sample_rate: 44100,
-	};
-	
-	let ports: HashMap<String, nodes::common::Ports> = process::init_nodes(&env, nodes);
-
-	(env, ports)
-}
 
 /// Parse project and execute any commands and then run it
 ///
@@ -88,28 +77,34 @@ pub fn run(path: &str) -> bool {
 
 	assert_eq!(modules.len(), 1, "Only support 1 module for now"); // TODO merayen support multiple modules
 
-	let parse_results: &mut parse_nodes::ParseResults = modules.values_mut().next().unwrap();
-	let nodes = &mut parse_results.nodes;
+	let module: &mut module::Module = modules.values_mut().next().unwrap();
+	let nodes = &mut module.nodes;
 
-	let (env, mut ports) = initialize_nodes(nodes);
+	let env = nodes::common::ProcessNodeEnvironment { // TODO merayen get these parameters somewhere
+		buffer_size: 8,
+		sample_rate: 44100,
+	};
 
-	start_process_loop(&env, nodes, &mut ports, -1);
+	start_process_loop(&env, module, -1);
 
 	return true;
 }
 
 
 /// Run a single text block of text. For debugging.
-pub fn run_single_module(text: &str, env: &nodes::common::ProcessNodeEnvironment, frames_to_process: i32) -> (parse_nodes::ParseResults, String) {
-	let (mut parse_results, result_text) = parse_nodes::parse_module_text(text);
+pub fn run_single_module(text: &str, env: &nodes::common::ProcessNodeEnvironment, frames_to_process: i32) -> (module::Module, String) {
+	let (mut module, result_text) = parse_nodes::parse_module_text(text);
 
-	let nodes = &mut parse_results.nodes;
+	let nodes = &mut module.nodes;
 
-	let (env, mut ports) = initialize_nodes(nodes);
+	let env = nodes::common::ProcessNodeEnvironment { // TODO merayen get these parameters somewhere
+		buffer_size: 8,
+		sample_rate: 44100,
+	};
 
-	start_process_loop(&env, nodes, &mut ports, frames_to_process);
+	start_process_loop(&env, &mut module, frames_to_process);
 
-	(parse_results, result_text)
+	(module, result_text)
 }
 
 

@@ -3,8 +3,9 @@ use crate::parse_nodes;
 use crate::parse;
 use crate::nodes;
 use crate::module::process;
+use crate::module;
 
-pub fn new(result: &mut parse_nodes::ParseResults, indent_block: &mut parse::IndentBlock) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
+pub fn new(module: &mut module::Module, indent_block: &mut parse::IndentBlock) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
 	let mut frequency = 440f32;
 	let mut frequency_in_name = None;
 	let mut frequency_in_id = None;
@@ -67,27 +68,27 @@ impl nodes::common::ProcessNode for SineNode {
 		ports
 	}
 	
-	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut nodes::common::Ports) {
-		let mut out: Option<&mut nodes::common::Outlet> = ports.outlets.get_mut("out");
-		let out_data: &mut nodes::common::Outlet = out.as_mut().unwrap();
-		let out_signal: &mut Vec<Vec<f32>> = out_data.signal.as_mut().unwrap();
+	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, inlets: &HashMap<String, nodes::common::Inlet>, outlets: &mut HashMap<String, nodes::common::Outlet>) {
+		//let mut out: Option<&mut nodes::common::Outlet> = outlets.get_mut("out");
+		//let out_data: &mut nodes::common::Outlet = out.as_mut().unwrap();
+		//let out_signal: &mut Vec<Vec<f32>> = out_data.signal.as_mut().unwrap();
 
-		let sample_rate = env.sample_rate as f64;
-		let frequency = self.frequency as f64;
+		//let sample_rate = env.sample_rate as f64;
+		//let frequency = self.frequency as f64;
 
-		// TODO merayen implement handling of input data
+		//// TODO merayen implement handling of input data
 
-		if out_signal.len() == 0 {
-			// No output voice. Create one
-			out_signal.push(vec![0f32; env.buffer_size]);
-		}
+		//if out_signal.len() == 0 {
+		//	// No output voice. Create one
+		//	out_signal.push(vec![0f32; env.buffer_size]);
+		//}
 
-		for voice in out_signal {
-			for i in 0..env.buffer_size {
-				voice[i] = 1337f32;
-				self.position += frequency / sample_rate * std::f64::consts::PI;
-			}
-		}
+		//for voice in out_signal {
+		//	for i in 0..env.buffer_size {
+		//		voice[i] = 1337f32;
+		//		self.position += frequency / sample_rate * std::f64::consts::PI;
+		//	}
+		//}
 	}
 }
 

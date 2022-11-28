@@ -66,11 +66,9 @@ sine id4
 
 		let mut nodes: HashMap<String, Option<Box<dyn ProcessNode>>> = parse_results.nodes;
 
-		let (env, mut ports) = project::initialize_nodes(&mut nodes);
-
 		for node in nodes.values() {}
 
-		let result = plan_execution_order(&nodes, &ports);
+		let result = plan_execution_order(&mut module);
 
 		assert_eq!(result, vec!["id1", "id2", "id3", "id4"]);
 	}
