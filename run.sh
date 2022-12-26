@@ -22,7 +22,7 @@ echo -n ">"
 read_char char
 
 if [[ "$char" = "?" ]]; then
-	find . -name "*.sh" -exec basename {} \; -exec head -n 1 {} \; -exec echo \;
+	find run -name "*.sh" -exec basename {} \; -exec head -n 1 {} \; -exec echo \;
 	exit
 fi
 

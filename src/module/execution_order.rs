@@ -11,10 +11,11 @@ use std::collections::{HashMap, HashSet};
 /// When node A needs the output of node B, node B must always execute before
 /// node A is executed.
 pub fn plan_execution_order(module: &mut module::Module) {
+	// TODO merayen make sure this one is run before execution
 	let mut dependencies: HashMap<String, HashSet<String>> = HashMap::new();
 
 	// Collect all nodes and put them into a simplified dependency list
-	for (node_id, ports) in &module.ports { // TODO merayen what about unconnected nodes? They won't be registered here, or...?
+	for (node_id, ports) in &module.ports {
 		let mut node_dependencies = HashSet::new();
 		for (port_name, inlet) in &ports.inlets {
 			
@@ -31,7 +32,6 @@ pub fn plan_execution_order(module: &mut module::Module) {
 
 	// Now iterate through the simplified dependency list and put those into the
 	// module's execution order.
-
 	module.execution_order.clear();
 
 	while dependencies.len() > 0 {

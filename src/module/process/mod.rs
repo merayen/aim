@@ -8,8 +8,17 @@ use crate::module;
 pub fn process_frame(env: &ProcessNodeEnvironment, module: &mut module::Module) {
 	// TODO merayen need to process each group nodes too
 
+	if module.nodes.len() != module.execution_order.len() {
+		// Forgotten to call `plan_execution_order`?
+		panic!("Length of execution order list and nodes in module is different");
+	}
+
 	// Do the processing work
-	for (id, node) in module.nodes.iter_mut() { // TODO merayen need to execute the nodes in correct order here
+	for node_id in module.execution_order.iter() {
+
+		// Get the node, unwrap() as we are really sure it should be there
+		// (otherwise there is something very wrong)
+		let node = module.nodes.get_mut(node_id).unwrap();
 		match node {
 			Some(process_node) => {
 				process_node.on_process(
