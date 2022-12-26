@@ -146,7 +146,6 @@ pub fn parse_node_parameter(text: &str) -> Result<PortParameter, String> {
 			}
 		}
 		Some(v) => {
-			println!("Constant on port: {}", v); // TODO merayen remove
 			Ok(
 				PortParameter::Constant {
 					name: name,

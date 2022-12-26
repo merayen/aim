@@ -6,7 +6,7 @@ use crate::module;
 ///
 /// Execute all the nodes in a module.
 pub fn process_frame(env: &ProcessNodeEnvironment, module: &mut module::Module) {
-	// TODO merayen need to process each group nodes too
+	// TODO merayen this method should handle multiple modules
 
 	if module.nodes.len() != module.execution_order.len() {
 		// Forgotten to call `plan_execution_order`?
@@ -28,18 +28,6 @@ pub fn process_frame(env: &ProcessNodeEnvironment, module: &mut module::Module) 
 			}
 			None => {
 				// Node wasn't possible to parse or is unknown. Ignore it
-			}
-		}
-	}
-
-	// Now query all the nodes for any voices that we can delete
-	let mut holds_voice = false;
-	for (id, node) in module.nodes.iter() {
-		match node {
-			Some(process_node) => {
-				// TODO merayen
-			}
-			None => {
 			}
 		}
 	}

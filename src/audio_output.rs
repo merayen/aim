@@ -12,6 +12,7 @@ pub struct ao_sample_format {
 
 const AO_FMT_LITTLE: std::os::raw::c_int = 1;
 
+#[allow(dead_code)]
 extern {
 	fn ao_initialize();
 	fn ao_default_driver_id() -> std::os::raw::c_int;
@@ -61,7 +62,7 @@ impl AudioOutput {
 			}
 
 			'outer: loop {
-				for op in rx.recv() {
+				if let Ok(op) = rx.recv() {
 					match op {
 						Action::Play { raw_buffer } => unsafe {
 								ao_play(device, raw_buffer.as_ptr(), raw_buffer.len());
