@@ -116,7 +116,7 @@ mod tests {
 		let rate = 8000;
 		let channels = 2;
 
-		let mut buffer = vec![0f32; (rate * channels) as usize];
+		let mut buffer = vec![0f32; (rate * channels / 10) as usize];
 
 		for i in 0..buffer.len() / 2 {
 			buffer[i * 2 + 0] = (2f32 * std::f32::consts::PI * 220f32 * ((i as f32) / (rate as f32))).sin();
@@ -126,9 +126,9 @@ mod tests {
 		let ao = AudioOutput::new(channels, rate);
 
 		ao.output(&buffer);
-		std::thread::sleep(std::time::Duration::new(1, 0));
-		ao.output(&buffer);
-		std::thread::sleep(std::time::Duration::new(2, 0));
+		std::thread::sleep(std::time::Duration::from_millis(1000));
+		//ao.output(&buffer);
+		//std::thread::sleep(std::time::Duration::new(2, 0));
 		ao.end();
 	}
 }
