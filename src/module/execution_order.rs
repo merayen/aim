@@ -11,7 +11,6 @@ use std::collections::{HashMap, HashSet};
 /// When node A needs the output of node B, node B must always execute before
 /// node A is executed.
 pub fn plan_execution_order(module: &mut module::Module) {
-	// TODO merayen make sure this one is run before execution
 	let mut dependencies: HashMap<String, HashSet<String>> = HashMap::new();
 
 	// Collect all nodes and put them into a simplified dependency list

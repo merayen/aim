@@ -83,7 +83,7 @@ pub fn run(path: &str) -> bool {
 		return false;
 	}
 
-	assert_eq!(modules.len(), 1, "Only support 1 module for now"); // TODO merayen support multiple modules
+	assert_eq!(modules.len(), 1, "Only support 1 module for now"); // TODO merayen multimodule: support multiple modules
 
 	let module: &mut module::Module = modules.values_mut().next().unwrap();
 

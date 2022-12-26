@@ -68,7 +68,7 @@ impl Outlet {
 /// Ports for a node
 pub struct Ports {
 	/// HashMap containing name of input port and Some(Inlet) if connected(?)
-	pub inlets: HashMap<String, Option<Inlet>>,
+	pub inlets: HashMap<String, Option<Inlet>>,  // TODO merayen do we need Option<> here? Just don't have the key instead?
 	pub outlets: HashMap<String, Outlet>,
 }
 
@@ -105,7 +105,7 @@ pub enum PortParameter {
 
 /// Parse a parameter line that can be connected to an outlet of another node
 pub fn parse_node_parameter(text: &str) -> Result<PortParameter, String> {
-	// TODO merayen why do we parse in this module?
+	// TODO merayen why do we parse in the nodes-module? move elsewhere?
 	let mut splitter = text.trim().split(" ");
 	let name = splitter.next().unwrap().to_string();
 
@@ -132,7 +132,7 @@ pub fn parse_node_parameter(text: &str) -> Result<PortParameter, String> {
 				Some(node_id) => {
 					match splitter.next() {
 						Some(inlet) => {
-							panic!("Yay, it works"); // TODO merayen remove
+							panic!("Yay, it works"); // TODO merayen parsing: remove
 							Ok(PortParameter::Outlet {name: name, node_id: node_id.to_string(), inlet: inlet.trim().to_string()})
 						}
 						_ => {

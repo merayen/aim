@@ -6,7 +6,7 @@ use crate::module;
 ///
 /// Execute all the nodes in a module.
 pub fn process_frame(env: &ProcessNodeEnvironment, module: &mut module::Module) {
-	// TODO merayen this method should handle multiple modules
+	// TODO merayen multimodule: this method should handle multiple modules
 
 	if module.nodes.len() != module.execution_order.len() {
 		// Forgotten to call `plan_execution_order`?
