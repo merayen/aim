@@ -8,5 +8,8 @@ mod process;
 mod audio_output;
 
 fn main() {
-	project::run("./example_project/");
+	// TODO merayen parse command line arguments
+
+	let path = std::env::current_dir().unwrap();
+	project::run(path.to_str().unwrap());
 }

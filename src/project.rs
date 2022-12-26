@@ -30,7 +30,7 @@ fn parse_project(path: &str) -> Result<HashMap<String, module::Module>, String> 
 			Ok(modules)
 		}
 		Err(error) => {
-			Err("Could not open directory".to_string())
+			Err(format!("Could not open directory \"{}\"", path))
 		}
 	}
 }
