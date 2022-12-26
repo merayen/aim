@@ -1,0 +1,1 @@
+git fetch && git log --branches="*" --remotes="origin" -p
