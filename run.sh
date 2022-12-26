@@ -1,3 +1,12 @@
+if [[ "$1" = "commands.txt" ]]; then
+		clear
+		TMPFILE=$(mktemp)
+		sed "$2q;d" $1 > $TMPFILE
+		echo "echo -n 'Done. Press Enter.'; read" >> $TMPFILE
+		tmux split-window bash $TMPFILE
+fi
+
+
 if [ "$1" == "plan.md" ]; then
 	plan
 	exit
