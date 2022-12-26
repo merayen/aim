@@ -8,7 +8,7 @@ pub trait ProcessNode {
 	fn on_init(&mut self, env: &ProcessNodeEnvironment) -> Ports;
 
 	/// Process a frame
-	fn on_process(&mut self, env: &ProcessNodeEnvironment, ports: &mut HashMap<String, nodes::common::Ports>);
+	fn on_process(&mut self, node_id: String, env: &ProcessNodeEnvironment, ports: &mut HashMap<String, nodes::common::Ports>);
 }
 
 pub struct ProcessNodeEnvironment {

@@ -22,6 +22,7 @@ pub fn process_frame(env: &ProcessNodeEnvironment, module: &mut module::Module) 
 		match node {
 			Some(process_node) => {
 				process_node.on_process(
+					node_id.to_string(),
 					env,
 					&mut module.ports,
 				);

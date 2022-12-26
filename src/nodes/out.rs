@@ -45,7 +45,7 @@ impl nodes::common::ProcessNode for OutNode {
 		ports
 	}
 
-	fn on_process(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &mut HashMap<String, nodes::common::Ports>) {
+	fn on_process(&mut self, node_id: String, env: &nodes::common::ProcessNodeEnvironment, ports: &mut HashMap<String, nodes::common::Ports>) {
 		// TODO merayen send data to speakers
 	}
 }
