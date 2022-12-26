@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use crate::module::process;
 use crate::module;
@@ -5,10 +6,10 @@ use crate::nodes;
 
 pub trait ProcessNode {
 	/// Initialize your ports here
-	fn on_init(&mut self, env: &ProcessNodeEnvironment) -> Ports;
+	fn on_init(&mut self, env: &ProcessNodeEnvironment) -> Ports;  // TODO merayen remove this, it is replaced by each node's `new`
 
 	/// Process a frame
-	fn on_process(&mut self, node_id: String, env: &ProcessNodeEnvironment, ports: &mut HashMap<String, nodes::common::Ports>);
+	fn on_process(&mut self, node_id: String, env: &ProcessNodeEnvironment, ports: &HashMap<String, nodes::common::Ports>);
 }
 
 pub struct ProcessNodeEnvironment {
@@ -69,7 +70,7 @@ impl Outlet {
 pub struct Ports {
 	/// HashMap containing name of input port and Some(Inlet) if connected(?)
 	pub inlets: HashMap<String, Option<Inlet>>,  // TODO merayen do we need Option<> here? Just don't have the key instead?
-	pub outlets: HashMap<String, Outlet>,
+	pub outlets: HashMap<String, RefCell<Outlet>>,
 }
 
 impl Ports {
@@ -82,17 +83,18 @@ impl Ports {
 
 	/// Create a new outlet configured to send signals
 	pub fn signal(&mut self, name: &str, env: &ProcessNodeEnvironment) {
-		self.outlets.insert(name.to_string(), Outlet::signal());
+		self.outlets.insert(name.to_string(), RefCell::new(Outlet::signal()));
 	}
 
 	/// Register an inlet
 	pub fn inlet(&mut self, name: &str) {
-		// TODO merayen does anything connect to the inlet?
 		self.inlets.insert(name.to_string(), None);
 	}
 }
 
+/// Parsed port type
 pub enum PortParameter {
+	// TODO merayen move to parsing?
 	/// The parameter is connected to an inlet
 	Inlet { name: String, node_id: String, outlet: String },
 
@@ -105,7 +107,7 @@ pub enum PortParameter {
 
 /// Parse a parameter line that can be connected to an outlet of another node
 pub fn parse_node_parameter(text: &str) -> Result<PortParameter, String> {
-	// TODO merayen why do we parse in the nodes-module? move elsewhere?
+	// TODO merayen move to parsing module?
 	let mut splitter = text.trim().split(" ");
 	let name = splitter.next().unwrap().to_string();
 

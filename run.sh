@@ -4,6 +4,7 @@ if [[ "$1" = "commands.txt" ]]; then
 		sed "$2q;d" $1 > $TMPFILE
 		echo "echo -n 'Done. Press Enter.'; read" >> $TMPFILE
 		tmux split-window bash $TMPFILE
+		exit
 fi
 
 

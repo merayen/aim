@@ -61,7 +61,8 @@ impl nodes::common::ProcessNode for SineNode {
 		ports
 	}
 	
-	fn on_process(&mut self, node_id: String, env: &nodes::common::ProcessNodeEnvironment, ports: &mut HashMap<String, nodes::common::Ports>) {
+	fn on_process(&mut self, node_id: String, env: &nodes::common::ProcessNodeEnvironment, ports: &HashMap<String, nodes::common::Ports>) {
+		let frequency = &ports[&node_id].inlets;
 		//let mut out: Option<&mut nodes::common::Outlet> = outlets.get_mut("out");
 		//let out_data: &mut nodes::common::Outlet = out.as_mut().unwrap();
 		//let out_signal: &mut Vec<Vec<f32>> = out_data.signal.as_mut().unwrap();
