@@ -1,4 +1,4 @@
-//! Handles one single module (e.g main.txt)
+//! Handles one single module (e.g main.aim)
 pub mod execution_order;
 pub mod process;
 

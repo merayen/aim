@@ -11,7 +11,7 @@ use crate::nodes;
 use crate::module;
 
 
-/// A node that parses its .txt-file
+/// A node that parses its .aim-file
 trait ParseNode {
 	fn parse(text_consumer: parse::IndentBlock);
 }
@@ -74,7 +74,7 @@ fn parse_node(module: &mut module::Module, indent_block: &mut parse::IndentBlock
 }
 
 
-/// Parse a module, e.g main.txt, verify, autocomplete and return changed text.
+/// Parse a module, e.g main.aim, verify, autocomplete and return changed text.
 ///
 /// Will return error messages back into the file.
 pub fn parse_module_text(raw_text: &str) -> (module::Module, String) {

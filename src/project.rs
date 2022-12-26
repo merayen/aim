@@ -19,7 +19,7 @@ fn parse_project(path: &str) -> Result<HashMap<String, module::Module>, String> 
 				let path = x.unwrap().path();
 				let filename = path.to_str().unwrap();
 
-				if filename.ends_with(".txt") {
+				if filename.ends_with(".aim") {
 					let stuff = std::fs::read_to_string(filename).unwrap();
 					let (module, text_consumer) = parse_nodes::parse_module_text(stuff.as_str());
 
@@ -122,7 +122,7 @@ mod tests {
 		let modules = parse_project("example_project/").unwrap();
 
 		assert_eq!(modules.len(), 1);
-		assert!(modules.contains_key("example_project/main.txt"));
-		assert_eq!(modules["example_project/main.txt"].nodes.len(), 4);
+		assert!(modules.contains_key("example_project/main.aim"));
+		assert_eq!(modules["example_project/main.aim"].nodes.len(), 4);
 	}
 }
