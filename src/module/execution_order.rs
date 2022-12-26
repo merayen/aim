@@ -1,7 +1,4 @@
-//! Calculating order to execute nodes
-//!
-//! Not fully implemented yet as we executes nodes randomly until we get
-//! performance issues.
+//! Calculate in which order to execute the nodes
 use crate::nodes::common::{ProcessNode, Ports};
 use crate::project;
 use crate::module;
@@ -9,49 +6,53 @@ use std::collections::{HashMap, HashSet};
 
 /// Plans in which order nodes in a module should be executed
 ///
-/// Returns the indexes in the input array that the nodes should be executed.
+/// Returns a list of node ids in which order they should be executed.
+///
+/// When node A needs the output of node B, node B must always execute before
+/// node A is executed.
 pub fn plan_execution_order(module: &mut module::Module) {
-	assert_eq!(module.execution_order.len(), 0);
+	let mut dependencies: HashMap<String, HashSet<String>> = HashMap::new();
 
-	// Find all the right-most nodes (e.g module outputs)
-	// They will be executed last.
-	let mut right_most = Vec::new();
-	for (node_id, ports) in &module.ports {
-		if ports.outlets.len() == 0 {
-			right_most.push(node_id);
-		}
-	}
+	// Collect all nodes and put them into a simplified dependency list
+	for (node_id, ports) in &module.ports { // TODO merayen what about unconnected nodes? They won't be registered here, or...?
+		let mut node_dependencies = HashSet::new();
+		for (port_name, inlet) in &ports.inlets {
+			
+			// Check if the inlet is connected
+			if let Some(inlet) = inlet {
 
-	// Add them to the ordered list.
-	// The first ones are now the latest one to execute.
-	let mut reversed_result: Vec<String> = Vec::new();
-	for node_id in &right_most {
-		reversed_result.push(node_id.to_string());
-	}
-
-	// TODO merayen check for circular dependencies, we don't support them
-
-	// Then trace those right-most nodes to the left
-	for node_id in &right_most {
-		let inlets = &module.ports[node_id.clone()].inlets;
-		for (left_node_id, inlet_option) in inlets {
-			match inlet_option {
-				Some(inlet) => {
-					let index = reversed_result.iter().position(|x| &x == node_id).unwrap();
-					println!("{}", index);
-					//reversed_result.insert(index, left_node_id.clone());
-				}
-				None => {
-				}
+				// Add the left node as a dependency for this node
+				node_dependencies.insert(inlet.node_id.to_string());
 			}
 		}
+		dependencies.insert(node_id.to_string(), node_dependencies);
 	}
 
-	reversed_result.reverse();
 
-	// Set the result onto the Module
-	for node_id in &reversed_result {
-		module.execution_order.push(node_id.clone());
+	// Now iterate through the simplified dependency list and put those into the
+	// module's execution order.
+
+	module.execution_order.clear();
+
+	while dependencies.len() > 0 {
+		let last_length = dependencies.len();
+
+		// Go through all the remaining nodes and see if anyone have their
+		// dependencies satisfied.
+		for (node_id, node_dependencies) in dependencies.clone() {
+
+			if node_dependencies.iter().all(|x| module.execution_order.contains(x)) {
+				// All dependencies for the node has been solved, or no dependencies
+				dependencies.remove(&node_id);
+				module.execution_order.push(node_id);
+			}
+		}
+
+		if last_length == dependencies.len() {
+			// We are stuck. Most likely due to nodes being connected in a loop,
+			// which is not something we support.
+			panic!("Loop detected");
+		}
 	}
 }
 
@@ -70,6 +71,8 @@ sine id2
 sine id3
 	frequency <- id1:out
 sine id4
+	frequency <- id2:out
+sine id5
 	frequency 440
 		".trim());
 
@@ -77,6 +80,31 @@ sine id4
 
 		plan_execution_order(&mut module);
 
-		assert_eq!(module.execution_order, vec!["id1", "id2", "id3", "id4"]);
+		assert!(module.execution_order.len() == 5, "Nodes are missing from the execution order");
+
+		assert!(
+			vec!["id1","id2","id3","id4","id5"].iter().all(
+				|x| module.execution_order.contains(&x.to_string())
+			),
+			"Nodes are missing in the execution order list"
+		);
+
+		assert!(
+			module.execution_order.iter().position(|x| x == "id2")
+			>
+			module.execution_order.iter().position(|x| x == "id1")
+		);
+
+		assert!(
+			module.execution_order.iter().position(|x| x == "id3")
+			>
+			module.execution_order.iter().position(|x| x == "id1")
+		);
+
+		assert!(
+			module.execution_order.iter().position(|x| x == "id4")
+			>
+			module.execution_order.iter().position(|x| x == "id2")
+		);
 	}
 }
