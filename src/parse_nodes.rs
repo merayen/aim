@@ -101,12 +101,12 @@ pub fn parse_node_parameter(text: &str) -> Result<PortParameter, String> {
 							Ok(PortParameter::Inlet {name: name, node_id: node_id.to_string(), outlet: outlet.to_string()})
 						}
 						None => {
-							Err("Invalid node:port reference".to_string())
+							Err("  # ERROR: Invalid node:port reference".to_string())
 						}
 					}
 				}
 				_ => {
-					Err("Missing id of the connecting node".to_string())
+					Err("  # ERROR: Missing id of the connecting node".to_string())
 				}
 			}
 		}
@@ -115,16 +115,15 @@ pub fn parse_node_parameter(text: &str) -> Result<PortParameter, String> {
 				Some(node_id) => {
 					match splitter.next() {
 						Some(inlet) => {
-							panic!("Yay, it works"); // TODO merayen parsing: remove
 							Ok(PortParameter::Outlet {name: name, node_id: node_id.to_string(), inlet: inlet.trim().to_string()})
 						}
 						_ => {
-							Err("Missing name of port of the connecting node".to_string())
+							Err("  # ERROR: Missing name of port of the connecting node".to_string())
 						}
 					}
 				}
 				_ => {
-					Err("Missing id of the connecting node".to_string())
+					Err("  # ERROR: Missing id of the connecting node".to_string())
 				}
 			}
 		}
@@ -140,7 +139,7 @@ pub fn parse_node_parameter(text: &str) -> Result<PortParameter, String> {
 				)
 		}
 		None => {
-			Err("Parameter is missing value".to_string())
+			Err("  # ERROR: Parameter is missing value".to_string())
 		}
 	}
 }
@@ -353,7 +352,7 @@ sine id0
 			}
 		}
 
-		let result = parse_node_parameter("frequency <- id1 out");
+		let result = parse_node_parameter("frequency <- id1:out");
 		match result {
 			Ok(PortParameter::Inlet {name, node_id, outlet}) => {
 				assert_eq!(name, "frequency");

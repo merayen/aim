@@ -31,7 +31,7 @@ pub fn new(indent_block: &mut parse::IndentBlock, ports: &mut nodes::common::Por
 				}
 			}
 			Err(message) => {
-				parameter_indent_block.text.push_str(&("  # ERROR: ".to_string() + &message));
+				parameter_indent_block.text.push_str(&message);
 			}
 			_ => {
 				parameter_indent_block.text.push_str("  # ERROR: Invalid parameter");
