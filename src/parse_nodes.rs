@@ -19,7 +19,6 @@ trait ParseNode {
 
 /// Parsed port type
 pub enum PortParameter {
-	// TODO merayen move to parsing?
 	/// The parameter is connected to an inlet
 	Inlet { name: String, node_id: String, outlet: String },
 
@@ -90,7 +89,6 @@ fn parse_node(module: &mut module::Module, indent_block: &mut parse::IndentBlock
 
 /// Parse a parameter line that can be connected to an outlet of another node
 pub fn parse_node_parameter(text: &str) -> Result<PortParameter, String> {
-	// TODO merayen move to parsing module?
 	let mut splitter = text.trim().split(" ");
 	let name = splitter.next().unwrap().to_string();
 
