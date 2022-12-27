@@ -53,12 +53,7 @@ pub struct SineNode {
 }
 
 impl nodes::common::ProcessNode for SineNode {
-	fn on_init(&mut self, env: &nodes::common::ProcessNodeEnvironment) -> nodes::common::Ports {
-		let mut ports = nodes::common::Ports::new();
-		ports.signal("out", env);
-		ports.inlet("frequency");
-
-		ports
+	fn on_init(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &HashMap<String, nodes::common::Ports>) {
 	}
 	
 	fn on_process(&mut self, node_id: String, env: &nodes::common::ProcessNodeEnvironment, ports: &HashMap<String, nodes::common::Ports>) {

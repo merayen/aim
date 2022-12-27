@@ -5,8 +5,11 @@ use crate::module;
 use crate::nodes;
 
 pub trait ProcessNode {
-	/// Initialize your ports here
-	fn on_init(&mut self, env: &ProcessNodeEnvironment) -> Ports;  // TODO merayen remove this, it is replaced by each node's `new`
+	/// Set up the node here
+	///
+	/// Called only once. Store any references to the buffers the node will be reading to keep the
+	/// overhead as low as possible when processing each frame.
+	fn on_init(&mut self, env: &ProcessNodeEnvironment, ports: &HashMap<String, nodes::common::Ports>);
 
 	/// Process a frame
 	fn on_process(&mut self, node_id: String, env: &ProcessNodeEnvironment, ports: &HashMap<String, nodes::common::Ports>);

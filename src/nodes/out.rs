@@ -38,11 +38,7 @@ pub fn new(indent_block: &mut parse::IndentBlock, ports: &mut nodes::common::Por
 }
 
 impl nodes::common::ProcessNode for OutNode {
-	fn on_init(&mut self, env: &nodes::common::ProcessNodeEnvironment) -> nodes::common::Ports {
-		let mut ports = nodes::common::Ports::new();
-		ports.inlet("in");
-
-		ports
+	fn on_init(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &HashMap<String, nodes::common::Ports>) {
 	}
 
 	fn on_process(&mut self, node_id: String, env: &nodes::common::ProcessNodeEnvironment, ports: &HashMap<String, nodes::common::Ports>) {

@@ -21,9 +21,10 @@ read_char() {
 
 echo -n ">"
 read_char char
+echo
 
 if [[ "$char" = "?" ]]; then
-	find run -name "*.sh" -exec basename {} \; -exec head -n 1 {} \; -exec echo \;
+	find run -name "*.sh" -exec echo -n "=== " \; -exec basename {} \; -exec head -n 5 {} \; 
 	exit
 fi
 
