@@ -48,6 +48,13 @@ fn start_process_loop( // TODO merayen change signature to match caller
 	// TODO merayen move to process-module
 	// TODO should probably only run the loop when reacting on commands
 
+	// Initialize the nodes
+	for (node_id, node) in module.nodes.iter_mut() {
+		if let Some(node) = node {
+			node.on_init(node_id.to_string(), env, &module.ports);
+		}
+	}
+
 	// Calculate in what order the nodes should be executed
 	module::execution_order::plan_execution_order(module);
 

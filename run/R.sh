@@ -1,1 +1,3 @@
-cargo build --release && target/release/aim
+cargo build --release &&
+cd example_project &&
+../target/release/aim

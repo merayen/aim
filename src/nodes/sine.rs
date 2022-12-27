@@ -39,6 +39,9 @@ pub fn new(indent_block: &mut parse::IndentBlock, ports: &mut nodes::common::Por
 		}
 	}
 
+	// Create our only output port
+	ports.signal("out");
+
 	Box::new(
 		SineNode {
 			frequency,
@@ -48,16 +51,29 @@ pub fn new(indent_block: &mut parse::IndentBlock, ports: &mut nodes::common::Por
 }
 
 pub struct SineNode {
+	/// Used for unconnected frequency inlet
 	frequency: f32,
+
+	/// Current position of the oscillator
 	position: f64,
 }
 
 impl nodes::common::ProcessNode for SineNode {
-	fn on_init(&mut self, env: &nodes::common::ProcessNodeEnvironment, ports: &HashMap<String, nodes::common::Ports>) {
+	fn on_init(&mut self, node_id: String, env: &nodes::common::ProcessNodeEnvironment, ports: &HashMap<String, nodes::common::Ports>) {
 	}
 	
 	fn on_process(&mut self, node_id: String, env: &nodes::common::ProcessNodeEnvironment, ports: &HashMap<String, nodes::common::Ports>) {
-		let frequency = &ports[&node_id].inlets;
+		let inlets = &ports[&node_id].inlets;
+		let outlets = &ports[&node_id].outlets;
+
+		if inlets.contains_key("frequency") {
+			// We receive frequency information on inlet, so we use that to modulate the oscillator
+			unimplemented!("Not implemented"); // TODO merayen implement
+		} else {
+			// We generate wave on a fixed frequency
+			let a = &outlets["out"];
+			a.borrow_mut();
+		}
 		//let mut out: Option<&mut nodes::common::Outlet> = outlets.get_mut("out");
 		//let out_data: &mut nodes::common::Outlet = out.as_mut().unwrap();
 		//let out_signal: &mut Vec<Vec<f32>> = out_data.signal.as_mut().unwrap();
