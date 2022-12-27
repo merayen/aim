@@ -45,7 +45,7 @@ pub fn new(indent_block: &mut parse::IndentBlock, ports: &mut nodes::common::Por
 	Box::new(
 		SineNode {
 			frequency,
-			position: 0f64,
+			position: 0f32,
 		}
 	)
 }
@@ -55,7 +55,7 @@ pub struct SineNode {
 	frequency: f32,
 
 	/// Current position of the oscillator
-	position: f64,
+	position: f32,
 }
 
 impl nodes::common::ProcessNode for SineNode {
@@ -68,32 +68,30 @@ impl nodes::common::ProcessNode for SineNode {
 
 		if inlets.contains_key("frequency") {
 			// We receive frequency information on inlet, so we use that to modulate the oscillator
-			unimplemented!("Not implemented"); // TODO merayen implement
+			unimplemented!("Support modulation of frequency"); // TODO merayen implement frequency modulation
 		} else {
 			// We generate wave on a fixed frequency
-			let a = &outlets["out"];
-			a.borrow_mut();
+			let mut a = outlets["out"].borrow_mut();
+			let b = a.signal.as_mut().unwrap();
+
+			// Check if we have a voice on our outlet
+			if b.len() == 0 {
+				// Create a new voice
+				let new_voice = vec![0f32; env.buffer_size];
+				b.push(new_voice);
+			}
+
+			let mut position = self.position;
+			for out_voice in b {
+				position = self.position;
+				for (i,sample) in out_voice.iter_mut().enumerate() {
+					*sample = position.sin();
+					position += (self.frequency as f32 / env.sample_rate as f32 * 2f32) as f32;
+				}
+			}
+
+			self.position = position % (std::f32::consts::PI * 2f32);
 		}
-		//let mut out: Option<&mut nodes::common::Outlet> = outlets.get_mut("out");
-		//let out_data: &mut nodes::common::Outlet = out.as_mut().unwrap();
-		//let out_signal: &mut Vec<Vec<f32>> = out_data.signal.as_mut().unwrap();
-
-		//let sample_rate = env.sample_rate as f64;
-		//let frequency = self.frequency as f64;
-
-		//// TODO merayen implement handling of input data
-
-		//if out_signal.len() == 0 {
-		//	// No output voice. Create one
-		//	out_signal.push(vec![0f32; env.buffer_size]);
-		//}
-
-		//for voice in out_signal {
-		//	for i in 0..env.buffer_size {
-		//		voice[i] = 1337f32;
-		//		self.position += frequency / sample_rate * std::f64::consts::PI;
-		//	}
-		//}
 	}
 }
 

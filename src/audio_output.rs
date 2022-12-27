@@ -88,16 +88,22 @@ impl AudioOutput {
 	}
 
 	pub fn output(&self, buffer: &Vec<f32>) {
+		// TODO merayen leaks memory, we need to poll if output needs more data?
 		let mut raw_buffer = vec![0i8; ((self.bits as usize) / 8usize * buffer.len()).try_into().unwrap()];
+
+		if buffer.len() as i32 % self.channels != 0 {
+			panic!("Unexpected buffer length. Must be dividable by channel count");
+		}
 
 		for i in 0..buffer.len() / (self.channels as usize) {
 			let sample = (0.75 * 32768.0 * buffer[i * (self.channels as usize)]) as i32;
-			raw_buffer[4*i] = (sample & 0xff) as i8;
-			raw_buffer[4*i+1] = ((sample >> 8) & 0xff) as i8;
+			raw_buffer[2*i] = (sample & 0xff) as i8;
+			raw_buffer[2*i+1] = ((sample >> 8) & 0xff) as i8;
 
-			let sample = (0.75 * 32768.0 * buffer[i * (self.channels as usize) + 1]) as i32;
-			raw_buffer[4*i+3] = ((sample >> 8) & 0xff) as i8;
-			raw_buffer[4*i+2] = (sample & 0xff) as i8;
+			// TODO merayen multichannel: does not support multiple channels yet
+			//let sample = (0.75 * 32768.0 * buffer[i * (self.channels as usize) + 1]) as i32;
+			//raw_buffer[4*i+3] = ((sample >> 8) & 0xff) as i8;
+			//raw_buffer[4*i+2] = (sample & 0xff) as i8;
 		}
 
 		self.tx.send(Action::Play {raw_buffer}).unwrap();

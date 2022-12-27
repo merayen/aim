@@ -19,5 +19,4 @@ sine IDa
 
 out IDb
 	volume 50%
-	port in
 	in <- IDa:out
