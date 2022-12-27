@@ -12,8 +12,8 @@ struct OutNode {}
 
 pub fn new(indent_block: &mut parse::IndentBlock, ports: &mut nodes::common::Ports) -> Box<(dyn nodes::common::ProcessNode + 'static)> {
 	for indent_block in &mut indent_block.children {
-		match nodes::common::parse_node_parameter(&indent_block.text) {
-			Ok(nodes::common::PortParameter::Inlet {name, node_id, outlet}) => {
+		match parse_nodes::parse_node_parameter(&indent_block.text) {
+			Ok(parse_nodes::PortParameter::Inlet {name, node_id, outlet}) => {
 				match name.as_str() {
 					"in" => {
 						&ports.inlets.insert(name, Some(nodes::common::Inlet {node_id, outlet}) );

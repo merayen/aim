@@ -9,8 +9,8 @@ pub fn new(indent_block: &mut parse::IndentBlock, ports: &mut nodes::common::Por
 	let mut frequency = 440f32;
 
 	for parameter_indent_block in &mut indent_block.children {
-		match nodes::common::parse_node_parameter(&parameter_indent_block.text) {
-			Ok(nodes::common::PortParameter::Constant {name, value}) => {
+		match parse_nodes::parse_node_parameter(&parameter_indent_block.text) {
+			Ok(parse_nodes::PortParameter::Constant {name, value}) => {
 				match name.as_str() {
 					"frequency" => {
 						frequency = value.parse::<f32>().unwrap();
@@ -20,7 +20,7 @@ pub fn new(indent_block: &mut parse::IndentBlock, ports: &mut nodes::common::Por
 					}
 				}
 			}
-			Ok(nodes::common::PortParameter::Inlet {name, node_id, outlet}) => {
+			Ok(parse_nodes::PortParameter::Inlet {name, node_id, outlet}) => {
 				match name.as_str() {
 					"frequency" => {
 						ports.inlets.insert(name, Some(nodes::common::Inlet { node_id, outlet }));
