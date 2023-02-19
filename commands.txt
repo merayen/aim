@@ -1,2 +1,3 @@
 find src -name "*.rs" -exec grep -P "\w+" {} \; | grep -vP "^\s+//" | wc  # LOC
 git log -p --remotes origin --all --branches="*"
+pactl list sink-inputs

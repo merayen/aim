@@ -1,5 +1,10 @@
 use std::sync::mpsc::{Sender, Receiver};
 
+// TODO merayen pulseaudio: support pa_stream_set_write_callback, may give us lower latencies?
+// TODO merayen pulseaudio: example https://gist.github.com/toroidal-code/8798775
+// TODO merayen pulseaudio: documentation https://freedesktop.org/software/pulseaudio/doxygen/stream_8h.html
+// TODO merayen pulseaudio: support pa_stream_set_read_callback when we want to read audio 
+
 #[repr(C)]
 pub struct ao_sample_format {
 	bits: std::os::raw::c_int,
@@ -88,11 +93,11 @@ impl AudioOutput {
 	}
 
 	pub fn output(&self, buffer: &Vec<f32>) {
-		// TODO merayen leaks memory, we need to poll if output needs more data?
+		// TODO merayen memory leak: we need to poll if output needs more data?
 		let mut raw_buffer = vec![0i8; ((self.bits as usize) / 8usize * buffer.len()).try_into().unwrap()];
 
 		if buffer.len() as i32 % self.channels != 0 {
-			panic!("Unexpected buffer length. Must be dividable by channel count");
+			panic!("Unexpected buffer length. Must be divisible by channel count");
 		}
 
 		for i in 0..buffer.len() / (self.channels as usize) {
