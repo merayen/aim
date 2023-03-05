@@ -1,5 +1,13 @@
-src/main.rs:163 : implement exit_signal_callback sigusr1_signal_callback?
+src/main.rs:276 : context is ready. Handle?
+src/main.rs:369 : implement exit_signal_callback sigusr1_signal_callback?
 c_example.c:134 : implement stream_state_callback
-src/main.rs:165 : maybe implement signal(SIGPIPE, SIG_IGN);?
-src/main.rs:135 : remove
-src/main.rs:142 : remove
+c_example.c:137 : implement this
+src/main.rs:371 : maybe implement signal(SIGPIPE, SIG_IGN);?
+src/main.rs:251 : remove
+src/main.rs:259 : remove
+src/main.rs:283 : remove
+src/main.rs:286 : remove
+src/main.rs:294 : remove
+src/main.rs:310 : remove
+src/main.rs:315 : remove
+src/main.rs:250 : use pa_stream_get_state() here

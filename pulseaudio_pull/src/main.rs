@@ -91,12 +91,6 @@ extern {
 		name: *mut std::os::raw::c_void,
 	) -> *mut std::os::raw::c_void;
 
-	fn pa_stream_set_write_callback(
-		pa_stream: *mut std::os::raw::c_void,
-		cb: *mut std::os::raw::c_void,
-		user_data: *mut std::os::raw::c_void,
-	);
-
 	fn pa_stream_new(
 		pa_context: *mut std::os::raw::c_void,
 		name: *const std::os::raw::c_void,
@@ -131,6 +125,109 @@ extern {
 	fn pa_stream_get_state(
 		pa_stream: *const std::os::raw::c_void,
 	) -> std::os::raw::c_int;
+
+	fn pa_stream_set_state_callback(
+		pa_stream: *mut std::os::raw::c_void,
+		cb: fn(
+			pa_stream: *mut std::os::raw::c_void,
+			userdata: *mut std::os::raw::c_void,
+		),
+		user_data: *mut std::os::raw::c_void,
+	);
+
+	fn pa_stream_set_write_callback(
+		pa_stream: *mut std::os::raw::c_void,
+		cb: fn(
+			pa_stream: *mut std::os::raw::c_void,
+			nbytes: usize,
+			userdata: *mut std::os::raw::c_void,
+		),
+		user_data: *mut std::os::raw::c_void,
+	);
+
+	fn pa_stream_set_read_callback(
+		pa_stream: *mut std::os::raw::c_void,
+		cb: fn(
+			pa_stream: *mut std::os::raw::c_void,
+			nbytes: usize,
+			userdata: *mut std::os::raw::c_void,
+		),
+		user_data: *mut std::os::raw::c_void,
+	);
+
+	fn pa_stream_set_suspended_callback(
+		pa_stream: *mut std::os::raw::c_void,
+		cb: fn(
+			pa_stream: *mut std::os::raw::c_void,
+			userdata: *mut std::os::raw::c_void,
+		),
+		user_data: *mut std::os::raw::c_void,
+	);
+
+	fn pa_stream_set_moved_callback(
+		pa_stream: *mut std::os::raw::c_void,
+		cb: fn(
+			pa_stream: *mut std::os::raw::c_void,
+			userdata: *mut std::os::raw::c_void,
+		),
+		user_data: *mut std::os::raw::c_void,
+	);
+
+	fn pa_stream_set_underflow_callback(
+		pa_stream: *mut std::os::raw::c_void,
+		cb: fn(
+			pa_stream: *mut std::os::raw::c_void,
+			userdata: *mut std::os::raw::c_void,
+		),
+		user_data: *mut std::os::raw::c_void,
+	);
+
+	fn pa_stream_set_overflow_callback(
+		pa_stream: *mut std::os::raw::c_void,
+		cb: fn(
+			pa_stream: *mut std::os::raw::c_void,
+			userdata: *mut std::os::raw::c_void,
+		),
+		user_data: *mut std::os::raw::c_void,
+	);
+
+	fn pa_stream_set_started_callback(
+		pa_stream: *mut std::os::raw::c_void,
+		cb: fn(
+			pa_stream: *mut std::os::raw::c_void,
+			userdata: *mut std::os::raw::c_void,
+		),
+		user_data: *mut std::os::raw::c_void,
+	);
+
+	fn pa_stream_set_event_callback(
+		pa_stream: *mut std::os::raw::c_void,
+		cb: fn(
+			pa_stream: *mut std::os::raw::c_void,
+			name: *const std::os::raw::c_char,
+			pa_proplist: *mut std::os::raw::c_void,
+			userdata: *mut std::os::raw::c_void,
+		),
+		user_data: *mut std::os::raw::c_void,
+	);
+
+	fn pa_stream_set_buffer_attr_callback(
+		pa_stream: *mut std::os::raw::c_void,
+		cb: fn(
+			pa_stream: *mut std::os::raw::c_void,
+			userdata: *mut std::os::raw::c_void,
+		),
+		user_data: *mut std::os::raw::c_void,
+	);
+
+	fn pa_stream_set_latency_update_callback(
+		pa_stream: *mut std::os::raw::c_void,
+		cb: fn(
+			pa_stream: *mut std::os::raw::c_void,
+			userdata: *mut std::os::raw::c_void,
+		),
+		user_data: *mut std::os::raw::c_void,
+	);
 }
 
 mod pa_context_state {
@@ -176,16 +273,79 @@ fn context_state_callback(
 		pa_context_state::PA_CONTEXT_SETTING_NAME => {
 		}
 		pa_context_state::PA_CONTEXT_READY => {
+			// TODO merayen context is ready. Handle?
 		}
 		pa_context_state::PA_CONTEXT_FAILED => {
 		}
 		pa_context_state::PA_CONTEXT_TERMINATED => {
 		}
 		_ => {
-			panic!("context_state_callback for unknown state: {}", state); // TODO merayen remove
+			panic!("context_state_callback got unknown state: {}", state); // TODO merayen remove
 		}
 	}
 	println!("context_state_callback({}) was called", state); // TODO merayen remove
+}
+
+fn stream_state_callback(
+	pa_stream: *mut std::os::raw::c_void,
+	userdata: *mut std::os::raw::c_void,
+) {
+	if pa_stream == std::ptr::null_mut() {
+		panic!("Missing context"); // TODO merayen remove
+	}
+
+	let state;
+	unsafe {
+    state = pa_stream_get_state(pa_stream);
+	}
+
+	match state {
+    pa_stream_state::PA_STREAM_UNCONNECTED => {
+		}
+    pa_stream_state::PA_STREAM_CREATING => {
+		}
+    pa_stream_state::PA_STREAM_READY => {
+		}
+    pa_stream_state::PA_STREAM_FAILED => {
+			panic!("Opening stream failed"); // TODO merayen remove
+		}
+    pa_stream_state::PA_STREAM_TERMINATED => {
+		}
+		_ => {
+			panic!("stream_state_callback got unknown state: {}", state); // TODO merayen remove
+		}
+	}
+}
+
+fn stream_write_callback() {
+}
+
+fn stream_read_callback() {
+}
+
+fn stream_suspended_callback() {
+}
+
+fn stream_moved_callback() {
+}
+
+fn stream_underflow_callback() {
+}
+
+fn stream_overflow_callback() {
+}
+
+fn stream_started_callback() {
+}
+
+fn stream_event_callback() {
+}
+
+fn stream_buffer_attr_callback() {
+}
+
+
+fn quit(retval: i32) {
 }
 
 fn main() {
