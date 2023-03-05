@@ -134,7 +134,7 @@ static void stream_read_callback(pa_stream *s, size_t length, void *userdata) {
 static void stream_state_callback(pa_stream *s, void *userdata) {  // TODO merayen implement stream_state_callback
     assert(s);
 
-    switch (pa_stream_get_state(s)) {
+    switch (pa_stream_get_state(s)) {  // TODO merayen implement this
         case PA_STREAM_CREATING:
         case PA_STREAM_TERMINATED:
             break;

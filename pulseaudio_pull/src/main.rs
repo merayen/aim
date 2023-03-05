@@ -4,12 +4,20 @@ const	STDIN_FILENO: i32 =	0;	/* Standard input.  */
 const	STDOUT_FILENO: i32 =	1;	/* Standard output.  */
 const	STDERR_FILENO: i32 =	2;	/* Standard error output.  */
 
-// pa_io_event_flags_t
-const PA_IO_EVENT_NULL: i32 = 0;     /**< No event */
-const PA_IO_EVENT_INPUT: i32 = 1;    /**< Input event */
-const PA_IO_EVENT_OUTPUT: i32 = 2;   /**< Output event */
-const PA_IO_EVENT_HANGUP: i32 = 4;   /**< Hangup event */
-const PA_IO_EVENT_ERROR: i32 = 8;     /**< Error event */
+
+mod pa_context_flags_t {
+	pub const PA_CONTEXT_NOFLAGS: u32 = 0x0000;
+	pub const PA_CONTEXT_NOAUTOSPAWN: u32 = 0x0001;
+	pub const PA_CONTEXT_NOFAIL: u32 = 0x0002;
+}
+
+mod pa_io_event_flags_t {
+	pub const PA_IO_EVENT_NULL: i32 = 0; /* No event */
+	pub const PA_IO_EVENT_INPUT: i32 = 1; /* Input event */
+	pub const PA_IO_EVENT_OUTPUT: i32 = 2; /* Output event */
+	pub const PA_IO_EVENT_HANGUP: i32 = 4; /* Hangup event */
+	pub const PA_IO_EVENT_ERROR: i32 = 8; /* Error event */
+}
 
 #[repr(C)]
 struct pa_mainloop_api {
@@ -22,11 +30,28 @@ struct pa_mainloop_api {
 			mainloop_api: *mut pa_mainloop_api,
 			event: *mut std::os::raw::c_void,
 			fd: i32,
-			pa_io_event_flags_t: i32,
+			flags: i32, // pa_io_event_flags_t
 			userdata: *mut std::os::raw::c_void,
 		),
 		*const std::os::raw::c_void,
 	) -> *mut std::os::raw::c_void,
+}
+
+struct pa_spawn_api {
+	/** Is called just before the fork in the parent process. May be
+	* NULL. */
+	prefork: fn(),
+
+	/** Is called immediately after the fork in the parent
+	* process. May be NULL.*/
+	postfork: fn(),
+
+	/** Is called immediately after the fork in the child
+	* process. May be NULL. It is not safe to close all file
+	* descriptors in this function unconditionally, since a UNIX
+	* socket (created using socketpair()) is passed to the new
+	* process. */
+	atfork: fn(),
 }
 
 extern {
@@ -54,9 +79,9 @@ extern {
 	) -> std::os::raw::c_int;
 
 	fn pa_context_new(
-		mainloop: *mut std::os::raw::c_void,
+		mainloop: *mut pa_mainloop_api,
 		name: *mut std::os::raw::c_void,
-	) -> *const std::os::raw::c_void;
+	) -> *mut std::os::raw::c_void;
 
 	fn pa_stream_set_write_callback(
 		pa_stream: *mut std::os::raw::c_void,
@@ -74,6 +99,26 @@ extern {
 	fn pa_context_get_state(
 		pa_context: *mut std::os::raw::c_void,
 	) -> i32;
+
+	fn pa_context_set_state_callback(
+		pa_context: *mut std::os::raw::c_void,
+		cb: fn(
+			pa_context: *mut std::os::raw::c_void,
+			userdata: *mut std::os::raw::c_void,
+		)
+	);
+
+	fn pa_context_connect(
+		pa_context: *mut std::os::raw::c_void,
+		server: *const std::os::raw::c_char,
+		flags: std::os::raw::c_uint, // pa_context_flags_t
+		api: *const pa_spawn_api,
+	) -> i32;
+
+	fn pa_mainloop_run(
+		mainloop: *mut std::os::raw::c_void,
+		retval: *mut std::os::raw::c_int,
+	);
 }
 
 const PA_CONTEXT_UNCONNECTED: i32 = 0;    /**< The context hasn't been connected yet */
@@ -88,9 +133,17 @@ fn stdin_callback(
 			mainloop_api: *mut pa_mainloop_api,
 			event: *mut std::os::raw::c_void,
 			fd: i32,
-			pa_io_event_flags_t: i32,
+			flags: i32, // pa_io_event_flags_t
 			userdata: *mut std::os::raw::c_void,
 ) {
+	panic!("stdin_callback was called!"); // TODO merayen remove
+}
+
+fn context_state_callback(
+	pa_context: *mut std::os::raw::c_void,
+	userdata: *mut std::os::raw::c_void,
+) {
+	println!("context_state_callback was called"); // TODO merayen remove
 }
 
 fn main() {
@@ -118,7 +171,7 @@ fn main() {
 		let stdio_event = ((*mainloop_api).io_new)(
 			mainloop_api,
 			STDIN_FILENO,
-			PA_IO_EVENT_INPUT,
+			pa_io_event_flags_t::PA_IO_EVENT_INPUT,
 			stdin_callback,
 			std::ptr::null(),
 		);
@@ -126,6 +179,20 @@ fn main() {
 		if stdio_event == std::ptr::null_mut() {
 			panic!("Could not run io_new");
 		}
+
+		let context = pa_context_new(mainloop_api, client_name);
+
+		if context == std::ptr::null_mut() {
+			panic!("Could not run pa_context_new");
+		}
+
+		pa_context_set_state_callback(context, context_state_callback);
+
+		if pa_context_connect(context, std::ptr::null(), 0, std::ptr::null()) < 0 {
+			panic!("Could not run pa_context_connect");
+		}
+
+		pa_mainloop_run(mainloop, &mut 0);
 
 		pa_xfree(client_name);
 		pa_xfree(stream_name);
