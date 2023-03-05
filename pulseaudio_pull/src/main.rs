@@ -1,5 +1,11 @@
 use std::ffi::CString;
 
+#[repr(C)]
+struct pa_mainloop_api {
+	userdata: *const::std::os::raw::c_void,
+	io_new: fn(mainloop_api: *mut pa_mainloop_api),
+}
+
 extern {
 	fn pa_xstrdup(
 		string: *const std::os::raw::c_char,
@@ -18,10 +24,10 @@ extern {
 
 	fn pa_mainloop_get_api(
 		pa_mainloop: *mut std::os::raw::c_void,
-	) -> *mut std::os::raw::c_void;
+	) -> *mut pa_mainloop_api;
 
 	fn pa_signal_init(
-		mainloop_api: *mut std::os::raw::c_void,
+		mainloop_api: *mut pa_mainloop_api,
 	) -> std::os::raw::c_int;
 
 	fn pa_context_new(
@@ -57,12 +63,13 @@ const PA_CONTEXT_TERMINATED: i32 = 6;      /**< The connection was terminated cl
 
 fn main() {
 	unsafe {
+		let stdio_event: *mut std::os::raw::c_void;
 		let mainloop = pa_mainloop_new();
 		if mainloop.is_null() {
 			panic!("Could not create mainloop");
 		}
 
-		let mainloop_api = pa_mainloop_get_api(mainloop);
+		let mainloop_api: *mut pa_mainloop_api = pa_mainloop_get_api(mainloop);
 
 		if pa_signal_init(mainloop_api) != 0 {
 			panic!("pa_signal_init failed");
@@ -71,6 +78,12 @@ fn main() {
 		let name = CString::new("aim").unwrap().as_ptr();
 		let client_name = pa_xstrdup(name);
 		let stream_name = pa_xstrdup(name);
+
+		// TODO merayen implement exit_signal_callback sigusr1_signal_callback?
+
+		// TODO merayen maybe implement signal(SIGPIPE, SIG_IGN);?
+
+		((*mainloop_api).io_new)(mainloop_api);
 
 		pa_xfree(client_name);
 		pa_xfree(stream_name);

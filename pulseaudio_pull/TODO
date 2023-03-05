@@ -1,1 +1,3 @@
-c_example.c:134 : implement this
+src/main.rs:83  : implement exit_signal_callback sigusr1_signal_callback?
+c_example.c:134 : implement stream_state_callback
+src/main.rs:85  : maybe implement signal(SIGPIPE, SIG_IGN);?
