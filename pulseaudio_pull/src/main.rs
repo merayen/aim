@@ -1,9 +1,32 @@
 use std::ffi::CString;
 
+const	STDIN_FILENO: i32 =	0;	/* Standard input.  */
+const	STDOUT_FILENO: i32 =	1;	/* Standard output.  */
+const	STDERR_FILENO: i32 =	2;	/* Standard error output.  */
+
+// pa_io_event_flags_t
+const PA_IO_EVENT_NULL: i32 = 0;     /**< No event */
+const PA_IO_EVENT_INPUT: i32 = 1;    /**< Input event */
+const PA_IO_EVENT_OUTPUT: i32 = 2;   /**< Output event */
+const PA_IO_EVENT_HANGUP: i32 = 4;   /**< Hangup event */
+const PA_IO_EVENT_ERROR: i32 = 8;     /**< Error event */
+
 #[repr(C)]
 struct pa_mainloop_api {
 	userdata: *const::std::os::raw::c_void,
-	io_new: fn(mainloop_api: *mut pa_mainloop_api),
+	io_new: fn(
+		mainloop_api: *mut pa_mainloop_api,
+		fd: std::os::raw::c_int,
+		events: i32,
+		cb: fn(
+			mainloop_api: *mut pa_mainloop_api,
+			event: *mut std::os::raw::c_void,
+			fd: i32,
+			pa_io_event_flags_t: i32,
+			userdata: *mut std::os::raw::c_void,
+		),
+		*const std::os::raw::c_void,
+	) -> *mut std::os::raw::c_void,
 }
 
 extern {
@@ -61,6 +84,15 @@ const PA_CONTEXT_READY: i32 = 4;          /**< The connection is established, th
 const PA_CONTEXT_FAILED: i32 = 5;         /**< The connection failed or was disconnected */
 const PA_CONTEXT_TERMINATED: i32 = 6;      /**< The connection was terminated cleanly */
 
+fn stdin_callback(
+			mainloop_api: *mut pa_mainloop_api,
+			event: *mut std::os::raw::c_void,
+			fd: i32,
+			pa_io_event_flags_t: i32,
+			userdata: *mut std::os::raw::c_void,
+) {
+}
+
 fn main() {
 	unsafe {
 		let stdio_event: *mut std::os::raw::c_void;
@@ -83,7 +115,17 @@ fn main() {
 
 		// TODO merayen maybe implement signal(SIGPIPE, SIG_IGN);?
 
-		((*mainloop_api).io_new)(mainloop_api);
+		let stdio_event = ((*mainloop_api).io_new)(
+			mainloop_api,
+			STDIN_FILENO,
+			PA_IO_EVENT_INPUT,
+			stdin_callback,
+			std::ptr::null(),
+		);
+
+		if stdio_event == std::ptr::null_mut() {
+			panic!("Could not run io_new");
+		}
 
 		pa_xfree(client_name);
 		pa_xfree(stream_name);
