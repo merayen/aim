@@ -150,6 +150,7 @@ fn stdin_callback(
 			flags: std::os::raw::c_int, // pa_io_event_flags_t
 			userdata: *mut std::os::raw::c_void,
 ) {
+	// TODO merayen use pa_stream_get_state() here
 	panic!("stdin_callback was called!"); // TODO merayen remove
 }
 
@@ -162,7 +163,7 @@ fn context_state_callback(
 	}
 	let state;
 	unsafe {
-		state = pa_stream_get_state(pa_context);
+		state = pa_context_get_state(pa_context);
 	}
 
 	match state {
