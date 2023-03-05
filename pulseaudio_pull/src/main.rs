@@ -19,6 +19,14 @@ mod pa_io_event_flags_t {
 	pub const PA_IO_EVENT_ERROR: i32 = 8; /* Error event */
 }
 
+mod pa_stream_state {
+    pub const PA_STREAM_UNCONNECTED: i32 = 0; /* The stream is not yet connected to any sink or source */
+    pub const PA_STREAM_CREATING: i32 = 1; /* The stream is being created */
+    pub const PA_STREAM_READY: i32 = 2; /* The stream is established, you may pass audio data to it now */
+    pub const PA_STREAM_FAILED: i32 = 3; /* An error occurred that made the stream invalid */
+    pub const PA_STREAM_TERMINATED: i32 = 4; /* i32 = 0< The stream has been terminated cleanly */
+}
+
 #[repr(C)]
 struct pa_mainloop_api {
 	userdata: *const::std::os::raw::c_void,
@@ -113,27 +121,33 @@ extern {
 		server: *const std::os::raw::c_char,
 		flags: std::os::raw::c_uint, // pa_context_flags_t
 		api: *const pa_spawn_api,
-	) -> i32;
+	) -> std::os::raw::c_int;
 
 	fn pa_mainloop_run(
 		mainloop: *mut std::os::raw::c_void,
 		retval: *mut std::os::raw::c_int,
 	);
+
+	fn pa_stream_get_state(
+		pa_stream: *const std::os::raw::c_void,
+	) -> std::os::raw::c_int;
 }
 
-const PA_CONTEXT_UNCONNECTED: i32 = 0;    /**< The context hasn't been connected yet */
-const PA_CONTEXT_CONNECTING: i32 = 1;     /**< A connection is being established */
-const PA_CONTEXT_AUTHORIZING: i32 = 2;    /**< The client is authorizing itself to the daemon */
-const PA_CONTEXT_SETTING_NAME: i32 = 3;   /**< The client is passing its application name to the daemon */
-const PA_CONTEXT_READY: i32 = 4;          /**< The connection is established, the context is ready to execute operations */
-const PA_CONTEXT_FAILED: i32 = 5;         /**< The connection failed or was disconnected */
-const PA_CONTEXT_TERMINATED: i32 = 6;      /**< The connection was terminated cleanly */
+mod pa_context_state {
+	pub const PA_CONTEXT_UNCONNECTED: i32 = 0;    /* The context hasn't been connected yet */
+	pub const PA_CONTEXT_CONNECTING: i32 = 1;     /* A connection is being established */
+	pub const PA_CONTEXT_AUTHORIZING: i32 = 2;    /* The client is authorizing itself to the daemon */
+	pub const PA_CONTEXT_SETTING_NAME: i32 = 3;   /* The client is passing its application name to the daemon */
+	pub const PA_CONTEXT_READY: i32 = 4;          /* The connection is established, the context is ready to execute operations */
+	pub const PA_CONTEXT_FAILED: i32 = 5;         /* The connection failed or was disconnected */
+	pub const PA_CONTEXT_TERMINATED: i32 = 6;      /* The connection was terminated cleanly */
+}
 
 fn stdin_callback(
 			mainloop_api: *mut pa_mainloop_api,
 			event: *mut std::os::raw::c_void,
 			fd: i32,
-			flags: i32, // pa_io_event_flags_t
+			flags: std::os::raw::c_int, // pa_io_event_flags_t
 			userdata: *mut std::os::raw::c_void,
 ) {
 	panic!("stdin_callback was called!"); // TODO merayen remove
@@ -143,7 +157,34 @@ fn context_state_callback(
 	pa_context: *mut std::os::raw::c_void,
 	userdata: *mut std::os::raw::c_void,
 ) {
-	println!("context_state_callback was called"); // TODO merayen remove
+	if pa_context == std::ptr::null_mut() {
+		panic!("Missing context"); // TODO merayen remove
+	}
+	let state;
+	unsafe {
+		state = pa_stream_get_state(pa_context);
+	}
+
+	match state {
+		pa_context_state::PA_CONTEXT_UNCONNECTED => {
+		}
+		pa_context_state::PA_CONTEXT_CONNECTING => {
+		}
+		pa_context_state::PA_CONTEXT_AUTHORIZING => {
+		}
+		pa_context_state::PA_CONTEXT_SETTING_NAME => {
+		}
+		pa_context_state::PA_CONTEXT_READY => {
+		}
+		pa_context_state::PA_CONTEXT_FAILED => {
+		}
+		pa_context_state::PA_CONTEXT_TERMINATED => {
+		}
+		_ => {
+			panic!("context_state_callback for unknown state: {}", state); // TODO merayen remove
+		}
+	}
+	println!("context_state_callback({}) was called", state); // TODO merayen remove
 }
 
 fn main() {
