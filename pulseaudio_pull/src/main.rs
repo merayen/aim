@@ -273,7 +273,17 @@ fn context_state_callback(
 		pa_context_state::PA_CONTEXT_SETTING_NAME => {
 		}
 		pa_context_state::PA_CONTEXT_READY => {
-			// TODO merayen context is ready. Handle?
+			// TODO merayen handle the other things above this
+			pa_stream_set_state_callback(stream, stream_state_callback, NULL);
+			pa_stream_set_write_callback(stream, stream_write_callback, NULL);
+			pa_stream_set_read_callback(stream, stream_read_callback, NULL);
+			pa_stream_set_suspended_callback(stream, stream_suspended_callback, NULL);
+			pa_stream_set_moved_callback(stream, stream_moved_callback, NULL);
+			pa_stream_set_underflow_callback(stream, stream_underflow_callback, NULL);
+			pa_stream_set_overflow_callback(stream, stream_overflow_callback, NULL);
+			pa_stream_set_started_callback(stream, stream_started_callback, NULL);
+			pa_stream_set_event_callback(stream, stream_event_callback, NULL);
+			pa_stream_set_buffer_attr_callback(stream, stream_buffer_attr_callback, NULL);
 		}
 		pa_context_state::PA_CONTEXT_FAILED => {
 		}
