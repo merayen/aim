@@ -1,2 +1,0 @@
-clear
-cargo run --release
