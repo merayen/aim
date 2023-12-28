@@ -1,4 +1,3 @@
-ctags -R src &&
-rsdex > index.txt &&
-todo src > TODO
-exit 0
+todo aim > .TODO
+pydex aim > index.txt
+ctags -R aim

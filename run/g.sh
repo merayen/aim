@@ -1,4 +1,5 @@
-TARGET_PATH="run"
+# 116:bash -> router -> code:sh
+TARGET_PATH="/home/merayen/d/Diverse/runs/git"
 
 read_char() {
 	stty -icanon -echo
@@ -16,3 +17,4 @@ if [[ "$char" = "?" ]]; then
 fi
 
 bash "$TARGET_PATH/$char.sh" $1 $2 $3 $4 $5 $6 $7 $8 $9
+

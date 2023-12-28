@@ -1,1 +1,1 @@
-cargo check
+mypy --strict $1
