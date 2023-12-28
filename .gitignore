@@ -1,5 +1,5 @@
-/target
 *.swp
 /index.txt
 /tags
-/.idea
+__pycache__
+.*
