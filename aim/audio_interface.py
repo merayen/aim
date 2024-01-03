@@ -13,7 +13,9 @@ def callback(outdata, frames, time, status):
 
 	assert not status, status
 
-	data = (numpy_process()*.1).reshape(frame_count, 1).tobytes(order="c")
+	# TODO merayen handle channels and channel_map
+	# TODO merayen handle midi outputs too... Send to hardware devices?
+	data = (sum(voice for out in numpy_process().values() for voice in out.data.values() if isinstance(out, Signal))*.1).reshape(frame_count, 1).tobytes(order="c")
 
 	if len(data) < len(outdata):  # End of stream, zero the last part
 		outdata[:len(data)] = data

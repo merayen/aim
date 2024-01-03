@@ -115,6 +115,7 @@ class OutNode(Node):
 @dataclass
 class Context:
 	out_nodes: list[OutNode] = field(default_factory=lambda: [])
+	unnamed_counter: int = 0
 
 
 _PARSE_CONTEXT = contextvars.ContextVar("_PARSE_CONTEXT")
@@ -122,7 +123,6 @@ _PARSE_CONTEXT = contextvars.ContextVar("_PARSE_CONTEXT")
 
 class DataType:
 	SIGNAL = 1
-	AUDIO = 2
 	MIDI = 3
 	NONE = 4  # When not decided statically
 
@@ -263,7 +263,7 @@ class reverb(Node):
 	input: Any
 	size: Any = 0.1  # "Seconds" maybe...?
 
-	output = Outlet(DataType.AUDIO)
+	output = Outlet(DataType.SIGNAL)
 
 
 @node
@@ -276,6 +276,17 @@ class load(Node):
 @node
 class out(OutNode):
 	input: Any = None
+
+	# This name is exported out of the module and is visible as a port on the outside
+	name: Optional[str] = None
+
+	def __post_init__(self):
+		super().__post_init__()
+
+		if not self.name:
+			context: Context = _PARSE_CONTEXT.get()
+			self.name = f"unnamed_{context.unnamed_counter}"
+			context.unnamed_counter += 1
 
 
 class state:
