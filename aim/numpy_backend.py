@@ -80,7 +80,7 @@ def _numpy_math(
 		if node.in0.datatype == DataType.SIGNAL and node.in1.datatype == DataType.SIGNAL:
 			process_code.extend(
 				[
-					f"for voice_id in set({node.in0._variable}.data.keys()).union({node.in1._variable}.data.keys()):",
+					f"for voice_id in set({node.in0._variable}.data.keys()).intersection({node.in1._variable}.data.keys()):",
 					f"	{node.output._variable}.data[voice_id] = {node.in0._variable}.data[voice_id] {op} {node.in1._variable}.data[voice_id]",
 				]
 			)

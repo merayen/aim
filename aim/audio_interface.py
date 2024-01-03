@@ -4,6 +4,8 @@ import threading
 
 event = threading.Event()
 
+_silence = np.zeros(frame_count, dtype="float32")
+
 def callback(outdata, frames, time, status):
 	assert frames == frame_count
 
@@ -15,7 +17,8 @@ def callback(outdata, frames, time, status):
 
 	# TODO merayen handle channels and channel_map
 	# TODO merayen handle midi outputs too... Send to hardware devices?
-	data = (sum(voice for out in numpy_process().values() for voice in out.data.values() if isinstance(out, Signal))*.1).reshape(frame_count, 1).tobytes(order="c")
+	output = numpy_process().values()
+	data = (sum((voice for out in output for voice in out.data.values() if isinstance(out, Signal)), _silence)*.1).reshape(frame_count, 1).tobytes(order="c")
 
 	if len(data) < len(outdata):  # End of stream, zero the last part
 		outdata[:len(data)] = data
