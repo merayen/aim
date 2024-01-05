@@ -16,37 +16,32 @@ def numpy_sine(node_context: NodeContext, node: sine, init_code: list[str], proc
 	clock = create_variable()
 	clock_array = create_variable()
 
-	# Clock for each voice
-	init_code.append(f"{clock} = defaultdict(lambda: 0.0)")
-
 	if isinstance(node.frequency, (int, float)):
-		# Fixed value input. We create our own, single voice. Simplified logic
-		voice_id_variable = create_variable()
-		init_code.extend(
-			[
-				f"{voice_id_variable} = create_voice()",
-				f"{node.output._variable} = Signal(data={{{voice_id_variable}: None}}, channel_map={{{voice_id_variable}: 0}})",
-			]
-		)
+		# Fixed value input. We create our own, single voice. Simplified logic.
+		# We use the "default voice 0".
+		init_code.append(f"{clock} = 0.0")
+		init_code.append(f"{node.output._variable} = Signal(data={{0: None}})")
+		process_code.append(f"global {clock}")
 		process_code.append(
-			f"{clock_array} = {clock}[{voice_id_variable}] + "
+			f"{clock_array} = {clock} + "
 			f"np.cumsum(np.ones({node_context.frame_count}, dtype='float32') * "
 			f"({node.frequency} * np.pi * 2 / {node_context.sample_rate}))"
 		)
-		process_code.append(f"{node.output._variable}.data[{voice_id_variable}] = np.sin({clock_array})")
-		process_code.append(f"{clock}[{voice_id_variable}] = {clock_array}[-1]")
+		process_code.append(f"{node.output._variable}.data[0] = np.sin({clock_array})")
+		process_code.append(f"{clock} = {clock_array}[-1]")
 	elif isinstance(node.frequency, Outlet):
-		# These ones may contain multiple voices.
-		# We only forward the voices.
 		if node.frequency.datatype == DataType.SIGNAL:
-			init_code.append("{node.output._variable = Signal()}")
+			# TODO merayen remove voices that disappears on the input
+			init_code.append(f"{clock} = defaultdict(lambda: 0.0)")
+			init_code.append(f"{node.output._variable} = Signal()")
 			process_code.extend(
 				[
 					f"for voice_id, data in {node.frequency._variable}.data.items():",
-					f"	{clock_array} = {clock} + "
+					f"	{clock_array} = {clock}[voice_id] + "
 					f"	np.cumsum(np.ones({node_context.frame_count}, dtype='float32') * "
 					f"	(data * np.pi * 2 / {node_context.sample_rate}))",
 					f"	{clock}[voice_id] = {clock_array}[-1] % (np.pi * 2)",
+					f"	{node.output._variable}.data[voice_id] = np.sin({clock_array})",
 				]
 			)
 		else:
@@ -76,34 +71,37 @@ def _numpy_math(
 				f"np.zeros({node_context.frame_count}) + {eval('node.in0'+op+'node.in1')}}})"
 		)
 	elif isinstance(node.in0, Outlet) and isinstance(node.in1, Outlet):
+		# TODO merayen remove voices that disappears on the input
 		process_code.append(f"{node.output._variable} = Signal()")
 		if node.in0.datatype == DataType.SIGNAL and node.in1.datatype == DataType.SIGNAL:
 			process_code.extend(
 				[
-					f"for voice_id in set({node.in0._variable}.data.keys()).intersection({node.in1._variable}.data.keys()):",
-					f"	{node.output._variable}.data[voice_id] = {node.in0._variable}.data[voice_id] {op} {node.in1._variable}.data[voice_id]",
+					f"for voice_id in set({node.in0._variable}.data.keys()).union({node.in1._variable}.data.keys()):",
+					f"	{node.output._variable}.data[voice_id] = {node.in0._variable}.data.get(voice_id, _SILENCE) {op} {node.in1._variable}.data.get(voice_id, _SILENCE)",
 				]
 			)
 		else:
 			unsupported(node)
 	elif isinstance(node.in0, (int, float)) and isinstance(node.in1, Outlet):
+		# TODO merayen remove voices that disappears on the input
 		process_code.append(f"{node.output._variable} = Signal()")
 		if node.in1.datatype == DataType.SIGNAL:
 			process_code.extend(
 				[
 					f"for voice_id in {node.in1._variable}.data:",
-					f"	{node.output._variable}.data[voice_id] = {node.in0} {op} {node.in1._variable}.data[voice_id]",
+					f"	{node.output._variable}.data.get(voice_id, _SILENCE) = {node.in0} {op} {node.in1._variable}.data.get(voice_id, _SILENCE)",
 				]
 			)
 		else:
 			unsupported(node)
 	elif isinstance(node.in0, Outlet) and isinstance(node.in1, (int, float)):
+		# TODO merayen remove voices that disappears on the input
 		process_code.append(f"{node.output._variable} = Signal()")
 		if node.in0.datatype == DataType.SIGNAL:
 			process_code.extend(
 				[
 					f"for voice_id in {node.in0._variable}.data:",
-					f"	{node.output._variable}.data[voice_id] = {node.in0._variable}.data[voice_id] {op} {node.in1}",
+					f"	{node.output._variable}.data[voice_id] = {node.in0._variable}.data.get(voice_id, _SILENCE) {op} {node.in1}",
 				]
 			)
 		else:
@@ -194,6 +192,8 @@ def compile_to_numpy(context: Context, frame_count: int = 512, sample_rate: int 
 		if not func:
 			raise NotImplementedError(f"Node {node.__class__} is not supported in the numpy_backend")
 
+		init_code.append(f"# {node.__class__.__name__}")
+		process_code.append(f"# {node.__class__.__name__}")
 		func(node_context, node, init_code, process_code)
 
 	# Return back data
