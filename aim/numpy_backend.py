@@ -16,32 +16,38 @@ def numpy_sine(node_context: NodeContext, node: sine, init_code: list[str], proc
 	clock = create_variable()
 	clock_array = create_variable()
 
-	init_code.append(f"{clock} = 0.0")
-	process_code.append(f"global {clock}")
-
 	if isinstance(node.frequency, (int, float)):
+		# Fixed value input. We create our own, single voice. Simplified logic.
+		# We use the "default voice 0".
+		init_code.append(f"{clock} = 0.0")
+		init_code.append(f"{node.output._variable} = Signal(data={{0: None}})")
+		process_code.append(f"global {clock}")
 		process_code.append(
 			f"{clock_array} = {clock} + "
-			f"np.cumsum(np.ones({node_context.frame_count}, dtype='float32') * ({node.frequency} * np.pi * 2 / {node_context.sample_rate}))"
+			f"np.cumsum(np.ones({node_context.frame_count}, dtype='float32') * "
+			f"({node.frequency} * np.pi * 2 / {node_context.sample_rate}))"
 		)
+		process_code.append(f"{node.output._variable}.data[0] = np.sin({clock_array})")
+		process_code.append(f"{clock} = {clock_array}[-1]")
 	elif isinstance(node.frequency, Outlet):
 		if node.frequency.datatype == DataType.SIGNAL:
-			process_code.append(
-				f"{clock_array} = {clock} + "
-				f"np.cumsum(np.ones({node_context.frame_count}, dtype='float32') * "
-				f"({node.frequency._variable} * np.pi * 2 / {node_context.sample_rate}))"
+			# TODO merayen remove voices that disappears on the input
+			init_code.append(f"{clock} = defaultdict(lambda: 0.0)")
+			init_code.append(f"{node.output._variable} = Signal()")
+			process_code.extend(
+				[
+					f"for voice_id, data in {node.frequency._variable}.data.items():",
+					f"	{clock_array} = {clock}[voice_id] + "
+					f"	np.cumsum(np.ones({node_context.frame_count}, dtype='float32') * "
+					f"	(data * np.pi * 2 / {node_context.sample_rate}))",
+					f"	{clock}[voice_id] = {clock_array}[-1] % (np.pi * 2)",
+					f"	{node.output._variable}.data[voice_id] = np.sin({clock_array})",
+				]
 			)
 		else:
 			unsupported(node)
 	else:
 		unsupported(node)
-
-	process_code.append(f"{clock} = {clock_array}[-1]")
-	process_code.append(f"{clock} %= np.pi * 2")
-
-	# If this node exists, we always have our output connected,
-	# otherwise we are not included at all in the execution (no one depends on us)
-	process_code.append(f"{node.output._variable} = np.sin({clock_array})")
 
 
 def _numpy_math(
@@ -59,21 +65,45 @@ def _numpy_math(
 	}[node.__class__]
 
 	if isinstance(node.in0, (int, float)) and isinstance(node.in1, (int, float)):
-		# Number never changes, do it only once
-		init_code.append(f"{node.output._variable} = np.zeros({node_context.frame_count}) + {eval('node.in0'+op+'node.in1')}")
+		# Number never changes, sum it only once
+		init_code.append(
+				f"{node.output._variable} = Signal(data={{create_voice():"
+				f"np.zeros({node_context.frame_count}) + {eval('node.in0'+op+'node.in1')}}})"
+		)
 	elif isinstance(node.in0, Outlet) and isinstance(node.in1, Outlet):
+		# TODO merayen remove voices that disappears on the input
+		process_code.append(f"{node.output._variable} = Signal()")
 		if node.in0.datatype == DataType.SIGNAL and node.in1.datatype == DataType.SIGNAL:
-			process_code.append(f"{node.output._variable} = {node.in0._variable} {op} {node.in1._variable}")
+			process_code.extend(
+				[
+					f"for voice_id in set({node.in0._variable}.data.keys()).union({node.in1._variable}.data.keys()):",
+					f"	{node.output._variable}.data[voice_id] = {node.in0._variable}.data.get(voice_id, _SILENCE) {op} {node.in1._variable}.data.get(voice_id, _SILENCE)",
+				]
+			)
 		else:
 			unsupported(node)
 	elif isinstance(node.in0, (int, float)) and isinstance(node.in1, Outlet):
+		# TODO merayen remove voices that disappears on the input
+		process_code.append(f"{node.output._variable} = Signal()")
 		if node.in1.datatype == DataType.SIGNAL:
-			process_code.append(f"{node.output._variable} = {node.in0} {op} {node.in1._variable}")
+			process_code.extend(
+				[
+					f"for voice_id in {node.in1._variable}.data:",
+					f"	{node.output._variable}.data.get(voice_id, _SILENCE) = {node.in0} {op} {node.in1._variable}.data.get(voice_id, _SILENCE)",
+				]
+			)
 		else:
 			unsupported(node)
 	elif isinstance(node.in0, Outlet) and isinstance(node.in1, (int, float)):
+		# TODO merayen remove voices that disappears on the input
+		process_code.append(f"{node.output._variable} = Signal()")
 		if node.in0.datatype == DataType.SIGNAL:
-			process_code.append(f"{node.output._variable} = {node.in0._variable} {op} {node.in1}")
+			process_code.extend(
+				[
+					f"for voice_id in {node.in0._variable}.data:",
+					f"	{node.output._variable}.data[voice_id] = {node.in0._variable}.data.get(voice_id, _SILENCE) {op} {node.in1}",
+				]
+			)
 		else:
 			unsupported(node)
 	else:
@@ -91,11 +121,26 @@ def numpy_poly(node_context: NodeContext, node: out, init_code: list[str], proce
 
 
 def numpy_out(node_context: NodeContext, node: out, init_code: list[str], process_code: list[str]) -> None:
-	if isinstance(node.input, Outlet):
-		input_variable = node.input._variable
-		process_code.append(f"output += {input_variable}")
-	elif isinstance(node.input, (int, float)):
-		process_code.append(f"output += {node.input}")
+	assert node.name
+	assert "'" not in node.name
+
+	if isinstance(node.input, (int, float)):
+		voice_id_variable = create_variable()
+		init_code.append(f"{voice_id_variable} = create_voice()")
+		process_code.extend(
+			[
+				f"output['{node.name}'] = Signal(",
+				f"	data=np.zeros({node_context.frame_count}, dtype='float32') + {node.input}",
+				")",
+			]
+		)
+
+	elif isinstance(node.input, Outlet):
+		process_code.extend(
+			[
+				f"output['{node.name}'] = {node.input._variable}",
+			]
+		)
 	else:
 		raise NotImplementedError("Support other types of input")  # TODO merayen support other types of input for out.input
 
@@ -110,16 +155,27 @@ def compile_to_numpy(context: Context, frame_count: int = 512, sample_rate: int 
 	process_code = []
 
 	init_code = [
-		#"process_counter = -1",
-		"voice_identifer = 0",
+		"import numpy as np",
+		"from collections import defaultdict",
+		"from dataclasses import dataclass, field",
+		"process_counter = -1",
+		"voice_identifier = -1",
+		"def create_voice():",
+		"	global voice_identifier",
+		"	voice_identifier += 1",
+		"	return voice_identifier",
+		"@dataclass",
+		"class Signal:",
+		"	data: dict = field(default_factory=lambda:{})",  # TODO merayen rename data to voices?
+		"	channel_map: dict = field(default_factory=lambda:{})",
 	]
 
 	process_code = [
-		#"global process_counter",
-		#"process_counter += 1",
+		"global process_counter",
+		"process_counter += 1",
 		#f"if not (process_counter % {frame_count}):"
 		#f"\tprint(round(process_counter*{frame_count} / {sample_rate}), 'seconds')",
-		f"output = np.zeros({frame_count}, dtype='float32')",
+		"output = {}",
 	]
 
 	node_context = NodeContext(
@@ -136,6 +192,8 @@ def compile_to_numpy(context: Context, frame_count: int = 512, sample_rate: int 
 		if not func:
 			raise NotImplementedError(f"Node {node.__class__} is not supported in the numpy_backend")
 
+		init_code.append(f"# {node.__class__.__name__}")
+		process_code.append(f"# {node.__class__.__name__}")
 		func(node_context, node, init_code, process_code)
 
 	# Return back data
@@ -143,8 +201,7 @@ def compile_to_numpy(context: Context, frame_count: int = 512, sample_rate: int 
 		"return output"
 	)
 
-	code = "import numpy as np"
-	code += "\n" + "\n".join(init_code)
+	code = "\n" + "\n".join(init_code)
 	code += f"\nsample_rate = {sample_rate}"
 	code += f"\nframe_count = {frame_count}"
 	code += "\ndef numpy_process():\n" + "\n".join(f"\t{x}" for x in process_code)
@@ -183,14 +240,15 @@ def test_sine_node() -> None:
 def test_math_nodes() -> None:
 	import numpy as np
 
-	assert np.all(run_code("out(add(0,1) + 5 + add(2,0) / add(4,0) * 2)") == 1 + 5 + 2 / 4 * 2)
+	assert np.all(run_code("out(add(0,1) + 5 + add(2,0) / add(4,0) * 2)")["unnamed_0"] == 1 + 5 + 2 / 4 * 2)
 
 	# TODO merayen verify output of all
 
 def test_sub_node() -> None:
 	import numpy as np
-
-	assert np.all(run_code("out(sub(20,5.0))") == 15)
+	r = run_code("out(sub(20,5.0))")["unnamed_0"].data
+	breakpoint()  # TODO merayen remove
+	assert np.all(r == 15)
 	run_code("out(sine(440) + 5)")
 	run_code("out(sub(in0=5, in1=sine(440)))")
 	run_code("out(sub(in0=sine(440), in1=5))")
@@ -201,7 +259,7 @@ def test_sub_node() -> None:
 def test_out_node() -> None:
 	import numpy as np
 
-	assert np.all(run_code("out(5*5)") == 25)
+	assert np.all(run_code("out(5*5)")["unnamed_0"].data == 25)
 
 
 def run_code(code: str, frame_count=10, sample_rate=48000) -> Any:
