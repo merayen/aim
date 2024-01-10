@@ -67,7 +67,7 @@ def _numpy_math(
 	if isinstance(node.in0, (int, float)) and isinstance(node.in1, (int, float)):
 		# Number never changes, sum it only once
 		init_code.append(
-				f"{node.output._variable} = Signal(data={{create_voice():"
+				f"{node.output._variable} = Signal(data={{0:"
 				f"np.zeros({node_context.frame_count}) + {eval('node.in0'+op+'node.in1')}}})"
 		)
 	elif isinstance(node.in0, Outlet) and isinstance(node.in1, Outlet):
@@ -89,7 +89,7 @@ def _numpy_math(
 			process_code.extend(
 				[
 					f"for voice_id in {node.in1._variable}.data:",
-					f"	{node.output._variable}.data.get(voice_id, _SILENCE) = {node.in0} {op} {node.in1._variable}.data.get(voice_id, _SILENCE)",
+					f"	{node.output._variable}.data[voice_id] = {node.in0} {op} {node.in1._variable}.data.get(voice_id, _SILENCE)",
 				]
 			)
 		else:
@@ -158,6 +158,7 @@ def compile_to_numpy(context: Context, frame_count: int = 512, sample_rate: int 
 		"import numpy as np",
 		"from collections import defaultdict",
 		"from dataclasses import dataclass, field",
+		f"_SILENCE = np.zeros({frame_count}, dtype='float32')",
 		"process_counter = -1",
 		"voice_identifier = -1",
 		"def create_voice():",
@@ -240,14 +241,13 @@ def test_sine_node() -> None:
 def test_math_nodes() -> None:
 	import numpy as np
 
-	assert np.all(run_code("out(add(0,1) + 5 + add(2,0) / add(4,0) * 2)")["unnamed_0"] == 1 + 5 + 2 / 4 * 2)
+	assert np.all(run_code("out(add(0,1) + 5 + add(2,0) / add(4,0) * 2)")["unnamed_0"].data[0] == 1 + 5 + 2 / 4 * 2)
 
 	# TODO merayen verify output of all
 
 def test_sub_node() -> None:
 	import numpy as np
-	r = run_code("out(sub(20,5.0))")["unnamed_0"].data
-	breakpoint()  # TODO merayen remove
+	r = run_code("out(sub(20,5.0))")["unnamed_0"].data[0]
 	assert np.all(r == 15)
 	run_code("out(sine(440) + 5)")
 	run_code("out(sub(in0=5, in1=sine(440)))")

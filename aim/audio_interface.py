@@ -4,8 +4,6 @@ import threading
 
 event = threading.Event()
 
-_SILENCE = np.zeros(frame_count, dtype="float32")
-
 def callback(outdata, frames, time, status):
 	assert frames == frame_count
 
