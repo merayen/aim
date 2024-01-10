@@ -25,9 +25,9 @@ def numpy_sine(node_context: NodeContext, node: sine, init_code: list[str], proc
 		process_code.append(
 			f"{clock_array} = {clock} + "
 			f"np.cumsum(np.ones({node_context.frame_count}, dtype='float32') * "
-			f"({node.frequency} * np.pi * 2 / {node_context.sample_rate}))"
+			f"({node.frequency} / {node_context.sample_rate}))"
 		)
-		process_code.append(f"{node.output._variable}.data[0] = np.sin({clock_array})")
+		process_code.append(f"{node.output._variable}.data[0] = np.sin({clock_array} * np.pi * 2)")
 		process_code.append(f"{clock} = {clock_array}[-1]")
 	elif isinstance(node.frequency, Outlet):
 		if node.frequency.datatype == DataType.SIGNAL:
@@ -39,9 +39,9 @@ def numpy_sine(node_context: NodeContext, node: sine, init_code: list[str], proc
 					f"for voice_id, data in {node.frequency._variable}.data.items():",
 					f"	{clock_array} = {clock}[voice_id] + "
 					f"	np.cumsum(np.ones({node_context.frame_count}, dtype='float32') * "
-					f"	(data * np.pi * 2 / {node_context.sample_rate}))",
-					f"	{clock}[voice_id] = {clock_array}[-1] % (np.pi * 2)",
-					f"	{node.output._variable}.data[voice_id] = np.sin({clock_array})",
+					f"	(data / {node_context.sample_rate}))",
+					f"	{clock}[voice_id] = {clock_array}[-1] % 1",
+					f"	{node.output._variable}.data[voice_id] = np.sin({clock_array} * np.pi * 2)",
 				]
 			)
 		else:
@@ -243,7 +243,6 @@ def test_math_nodes() -> None:
 
 	assert np.all(run_code("out(add(0,1) + 5 + add(2,0) / add(4,0) * 2)")["unnamed_0"].data[0] == 1 + 5 + 2 / 4 * 2)
 
-	# TODO merayen verify output of all
 
 def test_sub_node() -> None:
 	import numpy as np

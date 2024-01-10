@@ -215,13 +215,23 @@ class sine(Node):
 
 	output = Outlet(DataType.SIGNAL)
 
+@node
+class square(Node):
+	frequency: Any = 440
+	duty: Any = 0.5
+
+	output = Outlet(DataType.SIGNAL)
+
 
 @node
 class dB(Node):
 	"""Convert a dB number to a linear float.
 
 	Reduce amplitude on audio by 9dB:
-		_audio * dB(-9)"""
+		_audio * dB(-9)
+		or
+		_audio * -dB(9)
+	"""
 	decibel: Any = 0.0
 
 	output = Outlet(DataType.SIGNAL)
