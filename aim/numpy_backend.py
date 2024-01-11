@@ -12,7 +12,7 @@ class NodeContext:
 	sample_rate: int
 
 
-def _oscillator_clock_default_voice(
+def _oscillator_clock(
 	node_context: NodeContext,
 	node: Node,
 	init_code: list[str],
@@ -24,70 +24,53 @@ def _oscillator_clock_default_voice(
 	"""
 	clock = create_variable()
 	clock_array = create_variable()
-	func %= {'clock_array': clock_array}
 
-	init_code.append(f"{clock} = 0.0")
-	init_code.append(f"{node.output._variable} = Signal()")
-	process_code.append(f"global {clock}")
-	process_code.append(
-		f"{clock_array} = {clock} + "
-		f"np.cumsum(_ONES * "
-		f"({node.frequency} / {node_context.sample_rate}))"
-	)
-	process_code.append(f"{node.output._variable}.data[0] = {func}")
-	process_code.append(f"{clock} = {clock_array}[-1]")
-
-
-def _oscillator_clock_multi_voice(
-	node_context: NodeContext,
-	node: Node,
-	init_code: list[str],
-	process_code: list[str],
-	func: str,
-):
-	clock = create_variable()
-	clock_array = create_variable()
-	func %= {'clock_array': clock_array}
-
-	init_code.append(f"{clock} = defaultdict(lambda: 0.0)")
-	init_code.append(f"{node.output._variable} = Signal()")
-
-	# Note that we only respect voices on the frequency-input
-	# If e.g another input port has other voices, we just ignore them. This may or may not be wanted.
-	# TODO merayen remove voices that disappears on the input
-	process_code.extend(
-		[
-			f"for voice_id, data in {node.frequency._variable}.data.items():",
-			f"	{clock_array} = {clock}[voice_id] +"
-			f"	np.cumsum(_ONES * (data / {node_context.sample_rate}))",
-			f"	{clock}[voice_id] = {clock_array}[-1] % 1",
-			f"	{node.output._variable}.data[voice_id] = {func}",
-		]
-	)
-
-
-def numpy_sine(node_context: NodeContext, node: sine, init_code: list[str], process_code: list[str]) -> None:
 	if isinstance(node.frequency, (int, float)):
-		_oscillator_clock_default_voice(
-			node_context,
-			node,
-			init_code,
-			process_code,
-			"np.sin(%(clock_array)s * np.pi * 2)",
+		func %= {'clock_array': clock_array, "voice_id": 0}
+		init_code.append(f"{clock} = 0.0")
+		init_code.append(f"{node.output._variable} = Signal()")
+		process_code.append(f"global {clock}")
+		process_code.append(
+			f"{clock_array} = {clock} + "
+			f"np.cumsum(_ONES * ({node.frequency} / {node_context.sample_rate}))"
 		)
+		process_code.append(f"{node.output._variable}.data[0] = {func}")
+		process_code.append(f"{clock} = {clock_array}[-1]")
+
 	elif isinstance(node.frequency, Outlet):
-		if node.frequency.datatype == DataType.SIGNAL:
-			_oscillator_clock_multi_voice(
-				node_context,
-				node,
-				init_code,
-				process_code,
-				"np.sin(%(clock_array)s * np.pi * 2)",
-			)
-		else:
-			unsupported(node)
+		func %= {'clock_array': clock_array, "voice_id": "voice_id"}
+		init_code.append(f"{clock} = defaultdict(lambda: 0.0)")
+		init_code.append(f"{node.output._variable} = Signal()")
+
+		# Note that we only respect voices on the frequency-input
+		# If e.g another input port has other voices, we just ignore them. This may or may not be wanted.
+		# TODO merayen remove voices that disappears on the input
+		process_code.extend(
+			[
+				f"for voice_id, data in {node.frequency._variable}.data.items():",
+				f"	{clock_array} = {clock}[voice_id] +"
+				f"	np.cumsum(_ONES * (data / {node_context.sample_rate}))",
+				f"	{clock}[voice_id] = {clock_array}[-1] % 1",
+				f"	{node.output._variable}.data[voice_id] = {func}",
+			]
+		)
 	else:
 		unsupported(node)
+
+
+def numpy_sine(
+	node_context: NodeContext,
+	node: sine,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	_oscillator_clock(
+		node_context,
+		node,
+		init_code,
+		process_code,
+		"np.sin(%(clock_array)s * np.pi * 2)",
+	)
 
 
 def numpy_square(
@@ -96,63 +79,31 @@ def numpy_square(
 	init_code: list[str],
 	process_code: list[str],
 ) -> None:
-	if isinstance(node.frequency, (int, float)):
-		# When frequency input is a literal value, we always use the default voice 0
-		if node.duty is None:
-			_oscillator_clock_default_voice(
+	if node.duty is None:
+		_oscillator_clock(
+			node_context,
+			node,
+			init_code,
+			process_code,
+			f"(%(clock_array)s %% 1 >= 0.5).astype('float32')",
+		)
+	elif isinstance(node.duty, (int, float)):
+		_oscillator_clock(
+			node_context,
+			node,
+			init_code,
+			process_code,
+			f"(%(clock_array)s %% 1 >= {node.duty}).astype('float32')",
+		)
+	elif isinstance(node.duty, Outlet):
+		if node.duty.datatype == DataType.SIGNAL:
+			_oscillator_clock(
 				node_context,
 				node,
 				init_code,
 				process_code,
-				f"(%(clock_array)s %% 1 >= 0.5).astype('float32')",
+				f"(%(clock_array)s %% 1 > {node.duty._variable}.data.get(%(voice_id)s, _ONES)).astype('float32')",
 			)
-		if isinstance(node.duty, (int, float)):
-			_oscillator_clock_default_voice(
-				node_context,
-				node,
-				init_code,
-				process_code,
-				f"(%(clock_array)s %% 1 >= {node.duty}).astype('float32')",
-			)
-		elif isinstance(node.duty, Outlet):
-			if node.duty.datatype == DataType.SIGNAL:
-				_oscillator_clock_default_voice(
-					node_context,
-					node,
-					init_code,
-					process_code,
-					f"(%(clock_array)s %% 1 > {node.duty._variable.data.get(0, _ONES)}).astype('float32')",
-				)
-			else:
-				unsupported(node)
-	elif isinstance(node.frequency, Outlet):
-		if node.duty is None:
-			_oscillator_clock_multi_voice(
-				node_context,
-				node,
-				init_code,
-				process_code,
-				f"(%(clock_array)s %% 1 > 0.5).astype('float32')",
-			)
-		elif isinstance(node.duty, (int, float)):
-			_oscillator_clock_multi_voice(
-				node_context,
-				node,
-				init_code,
-				process_code,
-				f"(%(clock_array)s %% 1 > {node.duty}).astype('float32')",
-			)
-		elif isinstance(node.duty, Outlet):
-			if node.duty.datatype == DataType.SIGNAL:
-				_oscillator_clock_multi_voice(
-					node_context,
-					node,
-					init_code,
-					process_code,
-					f"(%(clock_array)s %% 1 > {node.duty._variable.data.get(voice_id, _ONES)}).astype('float32')",
-				)
-			else:
-				unsupported(node)
 		else:
 			unsupported(node)
 	else:
