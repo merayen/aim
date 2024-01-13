@@ -344,6 +344,7 @@ def _validate_python(text: str) -> None:
 			ast.Store,  # TODO merayen what is this?
 			ast.Constant,
 			ast.Add,
+			ast.Sub,
 			ast.Attribute,
 			ast.Mult,
 			ast.UnaryOp,  # TODO merayen what is this?
@@ -447,7 +448,10 @@ def run(context: Context) -> None:
 	with open(".numpy_program.py", "w") as f:
 		f.write(code)
 
-	exec(code, {})
+	try:
+		exec(code, {})
+	except KeyboardInterrupt:
+		pass
 
 
 def test_a() -> None:
@@ -561,6 +565,10 @@ def test_forbidden_python() -> None:
 	for x in (
 		"pass",  # Used in above test, testing here to ensure not creating false negatives above
 		"out()",
+		"1+1",
+		"1-1",
+		"1*1",
+		"1/1",
 		"_a = out(sine()); _a",
 	):
 		try:
