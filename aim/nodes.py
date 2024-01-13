@@ -277,7 +277,7 @@ class reverb(Node):
 
 
 @node
-class load(Node):
+class use(Node):
 	path: str = None  # Relative file path
 
 	# Input and outputs are decided by the module being loaded
@@ -347,7 +347,6 @@ def _validate_python(text: str) -> None:
 			ast.Sub,
 			ast.Attribute,
 			ast.Mult,
-			ast.UnaryOp,  # TODO merayen what is this?
 			ast.USub,
 			ast.keyword,
 		)):

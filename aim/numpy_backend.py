@@ -85,7 +85,7 @@ def numpy_square(
 			node,
 			init_code,
 			process_code,
-			f"(%(clock_array)s %% 1 >= 0.5).astype('float32')",
+			"(%(clock_array)s %% 1 >= 0.5).astype('float32')",
 		)
 	elif isinstance(node.duty, (int, float)):
 		_oscillator_clock(
