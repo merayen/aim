@@ -119,6 +119,21 @@ def numpy_square(
 		unsupported(node)
 
 
+def numpy_saw(
+	node_context: NodeContext,
+	node: sine,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	_oscillator_clock(
+		node_context,
+		node,
+		init_code,
+		process_code,
+		"(%(clock_array)s %% 1) * 2.0 - 1.0",
+	)
+
+
 def numpy_noise(
 	node_context: NodeContext,
 	node: sine,
@@ -212,6 +227,15 @@ numpy_add = _numpy_math
 numpy_sub = _numpy_math
 numpy_mul = _numpy_math
 numpy_div = _numpy_math
+
+
+def numpy_slew(
+	node_context: NodeContext,
+	node: out,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	raise NotImplementedError("")  # TODO merayen implement
 
 
 def numpy_poly(node_context: NodeContext, node: out, init_code: list[str], process_code: list[str]) -> None:
