@@ -241,17 +241,10 @@ class slew(Node):
 	"""
 	Increase rise and fall time
 	"""
-	rise: Any = 1  # Rises output value by 1 every second
-	fall: Any = None  # Same as rise, but for falling. If none, never falls
-
-	pow: Any = 1  # Increases the speed based on the difference on the input and the output
-
-	# The mass that "is moving". Higher values than 1 will create oscillations, which may be desired.
-	# Values below
-	mass: Any = 1
+	ringing: Any = 0
+	mass: Any = 0
 
 	output = Outlet(DataType.SIGNAL)
-
 
 
 @node
