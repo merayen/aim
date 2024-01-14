@@ -54,6 +54,15 @@ def _oscillator_clock(
 				f"	{node.output._variable}.data[voice_id] = {func}",
 			]
 		)
+
+		# Remove voices that has disappeared
+		process_code.extend(
+			[
+				f"for voice_id in set({node.output._variable}.data) - set({node.frequency._variable}.data):",
+				f"	{clock}.pop(voice_id)",
+				f"	{node.output._variable}.data.pop(voice_id)",
+			]
+		)
 	else:
 		unsupported(node)
 
