@@ -224,6 +224,14 @@ class square(Node):
 
 
 @node
+class noise(Node):
+	# Input is only used for voicing. No data read.
+	voices: Any = None
+
+	output = Outlet(DataType.SIGNAL)
+
+
+@node
 class dB(Node):
 	"""Convert a dB number to a linear float.
 

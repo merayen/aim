@@ -1,5 +1,6 @@
-# 116:bash -> router -> code:sh
 TARGET_PATH="/home/merayen/d/Diverse/runs/git"
+
+clear
 
 read_char() {
 	stty -icanon -echo

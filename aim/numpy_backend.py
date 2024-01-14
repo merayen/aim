@@ -110,6 +110,35 @@ def numpy_square(
 		unsupported(node)
 
 
+def numpy_noise(
+	node_context: NodeContext,
+	node: sine,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	init_code.append(f"{node.output._variable} = Signal()")
+
+	if isinstance(node.voices, Outlet):
+		process_code.extend(
+			[
+				"for voice_id in {node.voices._variable}.data:",
+					f"	{node.output._variable}.data[0] = random.random(({node_context.frame_count},), dtype='float32') * 2 - 1",
+			]
+		)
+
+		# Remove voices that are extinct
+		process_code.extend(
+			[
+				f"for voice_id in set({node.output._variable}.data) - set({node.voices._variable}.data)",
+				f"	{node.output._variable}.data.pop(voice_id)",
+			]
+		)
+	else:
+		process_code.append(
+			f"{node.output._variable}.data[0] = random.random(({node_context.frame_count},), dtype='float32') * 2 - 1"
+		)
+
+
 def _numpy_math(
 	node_context: NodeContext,
 	node: Node,
@@ -221,7 +250,7 @@ def compile_to_numpy(context: Context, frame_count: int = 512, sample_rate: int 
 		f"_SILENCE = np.zeros({frame_count}, dtype='float32')",
 		f"_ONES = np.ones({frame_count}, dtype='float32')",
 		"process_counter = -1",
-		"voice_identifier = -1",
+		"voice_identifier = 0",  # Note: All dynamically created voices starts at 1. 0 is the special default voice
 		"def create_voice():",
 		"	global voice_identifier",
 		"	voice_identifier += 1",
@@ -230,6 +259,7 @@ def compile_to_numpy(context: Context, frame_count: int = 512, sample_rate: int 
 		"class Signal:",
 		"	data: dict = field(default_factory=lambda:{})",  # TODO merayen rename data to voices?
 		"	channel_map: dict = field(default_factory=lambda:{})",
+		"random = np.random.default_rng()",
 	]
 
 	process_code = [
@@ -263,7 +293,7 @@ def compile_to_numpy(context: Context, frame_count: int = 512, sample_rate: int 
 		"return output"
 	)
 
-	code = "\n" + "\n".join(init_code)
+	code = "\n".join(init_code)
 	code += f"\nsample_rate = {sample_rate}"
 	code += f"\nframe_count = {frame_count}"
 	code += "\ndef numpy_process():\n" + "\n".join(f"\t{x}" for x in process_code)
