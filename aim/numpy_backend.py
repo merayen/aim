@@ -247,20 +247,31 @@ def numpy_audiofile(
 
 		process_code.append(f"global {playback_position}")
 
-		# Output to default voice
+		# If we are done playing, clear all output voices
+		process_code.append(f"if {playback_position}+1 >= {audio_sample_count}:")
+		process_code.append(f"	{node.output._variable}.data.clear()")
+		process_code.append("else:")
+		process_code.append("	pass")
+
+		# Output each channel to its own voice
+		# XXX Maybe we could do this more effective using numpy directly...?
 		for channel_index in node.channel_paths:
 			process_code.append(
-				f"{node.output._variable}.data[{channel_index}] = "
+				f"	{node.output._variable}.data[{channel_index}] = "
 				f"{audio_data}[{channel_index}][{playback_position}:{playback_position}+{node_context.frame_count}]"
 			)
 
+			# When at the end of the audio signal, pad with silence
+			process_code.extend(
+				[
+					f"	if len({node.output._variable}.data[{channel_index}]) != {node_context.frame_count}:",
+					f"		{node.output._variable}.data[{channel_index}] = "
+					f"np.pad({node.output._variable}.data[{channel_index}], pad_width=(0,{node_context.frame_count}-len({node.output._variable}.data[{channel_index}])))",
+				]
+			)
+
 		# Increase the playback position, if not at the end already
-		process_code.extend(
-			[
-				f"if {playback_position} < {audio_sample_count}:"
-				f"	{playback_position} += {node_context.frame_count}",
-			]
-		)
+		process_code.append(f"	{playback_position} += {node_context.frame_count}")
 	else:
 		# TODO merayen how to support multiple voices of this node that already creates voices? stack them?
 		unsupported(node)

@@ -1,3 +1,3 @@
 out(
-	audiofile("/media/merayen/Bekvemmelighet/Video/Youtubb/Autolaser - IKNOW - DASH.m4a") * 3
+	audiofile("/home/merayen/ダウンロード/splash-6213.mp3") * 3
 )

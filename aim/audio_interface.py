@@ -1,10 +1,12 @@
 import sounddevice as sd
 import threading
 
+CHANNEL_COUNT = 2
 
 event = threading.Event()
 
 def callback(outdata, frames, time, status):
+	# Is this check bad? Could frames vary?
 	assert frames == frame_count
 
 	if status.output_underflow:
@@ -13,18 +15,33 @@ def callback(outdata, frames, time, status):
 
 	assert not status, status
 
-	# TODO merayen handle channels and channel_map
 	# TODO merayen handle midi outputs too... Send to hardware devices?
 	output = numpy_process().values()
-	data = (sum((voice for out in output for voice in out.data.values() if isinstance(out, Signal)), _SILENCE)*.1).reshape(frame_count, 1).tobytes(order="c")
 
-	assert len(outdata) == len(data), f"{len(outdata)=!r} != {len(data)=!r}"
-	outdata[:] = data
+	output_channels = {0: np.zeros(frame_count, dtype='float32'), 1: np.zeros(frame_count, dtype='float32')}
 
-with sd.RawOutputStream(
+	if not any(1 for out in output for voice_id in out.data):
+		assert np.all(_SILENCE == 0.0)
+
+		outdata[:,0] = _SILENCE
+		outdata[:,1] = _SILENCE
+		return
+
+	for out in output:
+		if isinstance(out, Signal):
+			for voice_id, voice in out.data.items():
+
+				# TODO merayen read channel_map instead of using voice_id directly as channel_index
+				output_channels[voice_id % CHANNEL_COUNT] += voice * .1
+
+	outdata[:,0] = output_channels[0]
+	outdata[:,1] = output_channels[1]
+
+
+with sd.OutputStream(
 	samplerate=sample_rate,
 	blocksize=frame_count,
-	channels=1,  # TODO merayen don't hardcode
+	channels=CHANNEL_COUNT,
 	dtype='float32',
 	callback=callback,
 	finished_callback=event.set,
