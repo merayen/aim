@@ -209,6 +209,62 @@ def numpy_poly(node_context: NodeContext, node: out, init_code: list[str], proce
 	pass
 
 
+def numpy_audiofile(
+	node_context: NodeContext,
+	node: out,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	# TODO merayen implement high quality resampling when node.speed is else than "1"
+
+	init_code.append(f"{node.output._variable} = Signal()")
+
+	if not node.channel_paths:
+		return  # No audio to play back. Process nothing
+
+	audio_sample_count = create_variable()
+	audio_data = create_variable()
+
+	if node.voices is None:
+		# No voicing. Simple implementation with single playback
+		playback_position = create_variable()
+
+		init_code.append(f"{playback_position} = 0")
+		init_code.append(f"{audio_data} = {{}}")
+
+		# YOLO-load all channel data into memory
+		# XXX Implement smart-buffering of audio files in the future
+		for i, (channel_index, channel_path) in enumerate(node.channel_paths.items()):
+			assert "'" not in channel_path
+
+
+			init_code.append(f"{audio_data}[{channel_index}] = np.fromfile('{channel_path}', dtype='float32')")
+
+			if not i:
+				init_code.append(f"{audio_sample_count} = len({audio_data}[{channel_index}])")
+			else:
+				init_code.append(f"assert {audio_sample_count} == len({audio_data}[{channel_index}])")
+
+		process_code.append(f"global {playback_position}")
+
+		# Output to default voice
+		for channel_index in node.channel_paths:
+			process_code.append(
+				f"{node.output._variable}.data[{channel_index}] = "
+				f"{audio_data}[{channel_index}][{playback_position}:{playback_position}+{node_context.frame_count}]"
+			)
+
+		# Increase the playback position, if not at the end already
+		process_code.extend(
+			[
+				f"if {playback_position} < {audio_sample_count}:"
+				f"	{playback_position} += {node_context.frame_count}",
+			]
+		)
+	else:
+		# TODO merayen how to support multiple voices of this node that already creates voices? stack them?
+		unsupported(node)
+
 def numpy_out(node_context: NodeContext, node: out, init_code: list[str], process_code: list[str]) -> None:
 	assert node.name
 	assert "'" not in node.name

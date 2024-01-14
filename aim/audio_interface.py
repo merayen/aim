@@ -18,18 +18,13 @@ def callback(outdata, frames, time, status):
 	output = numpy_process().values()
 	data = (sum((voice for out in output for voice in out.data.values() if isinstance(out, Signal)), _SILENCE)*.1).reshape(frame_count, 1).tobytes(order="c")
 
-	if len(data) < len(outdata):  # End of stream, zero the last part
-		outdata[:len(data)] = data
-		outdata[len(data):] = b'\x00' * (len(outdata) - len(data))
-		raise sd.CallbackStop
-	else:
-		assert len(outdata) == len(data), f"{len(outdata)=!r} != {len(data)=!r}"
-		outdata[:] = data
+	assert len(outdata) == len(data), f"{len(outdata)=!r} != {len(data)=!r}"
+	outdata[:] = data
 
 with sd.RawOutputStream(
 	samplerate=sample_rate,
 	blocksize=frame_count,
-	channels=1,
+	channels=1,  # TODO merayen don't hardcode
 	dtype='float32',
 	callback=callback,
 	finished_callback=event.set,

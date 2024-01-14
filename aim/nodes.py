@@ -7,6 +7,8 @@ from typing import Any, Optional
 import contextvars
 import os
 
+from aim import importing
+
 
 def node(cls: type):
 	assert issubclass(cls, Node)
@@ -285,10 +287,38 @@ class reverb(Node):
 
 
 @node
-class use(Node):
-	path: str = None  # Relative file path
+class audiofile(Node):
+	"""
+	Tries to load audio from a file
+	"""
+	file: str = None
 
-	# Input and outputs are decided by the module being loaded
+	# Playback speed. Can be negative.
+	speed: Any = 1.0
+
+	# Create multiple voices of this node, allowing multiple playheads
+	voices: Any = None
+
+	output = Outlet(DataType.SIGNAL)
+
+	def __post_init__(self):
+		super().__post_init__()
+
+		self.channel_paths = {}
+
+		# TODO merayen retrieve sample_rate from aim project config or something?
+		for path in importing.read_audio_data(self.file, 48000):
+			self.channel_paths[int(path.split("-")[1])] = path
+
+
+@node
+class use(Node):
+	"""
+	Load a module (another Python file)
+
+	The inputs and outputs are dynamically set by the module.
+	"""
+	path: str = None  # Relative file path
 
 
 @node
