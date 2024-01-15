@@ -229,6 +229,32 @@ numpy_mul = _numpy_math
 numpy_div = _numpy_math
 
 
+def numpy_mix(
+	node_context: NodeContext,
+	node: out,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	# TODO merayen how should we mix channel_map if in0 and in1 has different maps
+	init_code.append(f"{node.output._variable} = Signal()")
+
+	# TODO merayen handle having fac set and not, and if it is an Outlet
+	if isinstance(node.in0, Outlet) and isinstance(node.in1, Outlet):
+		process_code.extend(
+			[
+				# Create new voices we haven't created yet
+				f"for voice_id in set({node.in0._variable}.data).intersection({node.in1._variable}.data):",
+				f"	{node.output._variable}.data[voice_id] = {node.in0._variable}.data[voice_id] ",
+
+				# Remove voices that are extinct
+				f"for voice_id in set({node.output._variable}.data) - set({node.in0._variable}.data) - set({node.in1._variable}.data):",
+				f"	{node.output._variable}.data.pop(voice_id)",
+			]
+		)
+	else:
+		unsupported(node)
+
+
 def numpy_slew(
 	node_context: NodeContext,
 	node: out,

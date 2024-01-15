@@ -212,10 +212,20 @@ class div(Node):
 
 
 @node
+class mix(Node):
+	in0: Any = None
+	in1: Any = None
+	fac: Any = 0.5
+
+	output = Outlet(DataType.SIGNAL)
+
+
+@node
 class sine(Node):
 	frequency: Any = 440
 
 	output = Outlet(DataType.SIGNAL)
+
 
 @node
 class square(Node):
@@ -229,6 +239,7 @@ class square(Node):
 class noise(Node):
 	# Input is only used for voicing. No data read.
 	voices: Any = None
+
 
 class saw(Node):
 	frequency: Any = 440

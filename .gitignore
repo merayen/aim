@@ -2,4 +2,5 @@
 /index.txt
 /tags
 __pycache__
+*.out
 .*
