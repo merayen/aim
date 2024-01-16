@@ -94,7 +94,7 @@ def numpy_square(
 			node,
 			init_code,
 			process_code,
-			"(%(clock_array)s %% 1 >= 0.5).astype('float32')",
+			"(%(clock_array)s %% 1 >= 0.5).astype('float32') * 2 - 1",
 		)
 	elif isinstance(node.duty, (int, float)):
 		_oscillator_clock(
@@ -102,7 +102,7 @@ def numpy_square(
 			node,
 			init_code,
 			process_code,
-			f"(%(clock_array)s %% 1 >= {node.duty}).astype('float32')",
+			f"(%(clock_array)s %% 1 >= {node.duty}).astype('float32') * 2 - 1",
 		)
 	elif isinstance(node.duty, Outlet):
 		if node.duty.datatype == DataType.SIGNAL:
@@ -111,7 +111,7 @@ def numpy_square(
 				node,
 				init_code,
 				process_code,
-				f"(%(clock_array)s %% 1 > {node.duty._variable}.data.get(%(voice_id)s, _ONES)).astype('float32')",
+				f"(%(clock_array)s %% 1 > {node.duty._variable}.data.get(%(voice_id)s, _ONES)).astype('float32') * 2 - 1",
 			)
 		else:
 			unsupported(node)
