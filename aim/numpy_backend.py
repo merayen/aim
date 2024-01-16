@@ -241,28 +241,55 @@ def numpy_mix(
 	# TODO merayen how should we mix channel_map if in0 and in1 has different maps
 	init_code.append(f"{node.output._variable} = Signal()")
 
+	if isinstance(node.in0, Outlet):
+		process_code.append(f"{in0_voices} = set({node.in0._variable}.data)")
+	if isinstance(node.in1, Outlet):
+		process_code.append(f"{in1_voices} = set({node.in1._variable}.data)")
+
+	if isinstance(node.in0, Outlet) and isinstance(node.in1, Outlet):
+		process_code.append(f"for voice_id in {in0_voices}.intersection({in1_voices}):")
+	elif isinstance(node.in0, Outlet):
+		process_code.append(f"for voice_id in {in0_voices}:")
+	elif isinstance(node.in1, Outlet):
+		process_code.append(f"for voice_id in {in1_voices}:")
+	else:
+		process_code.append(f"for voice_id in [0]:")
+	process_code.append(f"	{node.output._variable}.data[voice_id] = (")
+
 	if isinstance(node.fac, (int, float)):
 		fac = (max(min(node.fac, 1), -1) + 1) / 2
-		if isinstance(node.in0, Outlet) and isinstance(node.in1, Outlet):
-			process_code.append(f"{in0_voices} = set({node.in0._variable}.data)")
-			process_code.append(f"{in1_voices} = set({node.in1._variable}.data)")
-
-			process_code.extend(
-				[
-					f"for voice_id in {in0_voices}.intersection({in1_voices}):",
-					f"	{node.output._variable}.data[voice_id] ="
-						f"{node.in0._variable}.data[voice_id] * (1-{fac}) +"
-						f"{node.in1._variable}.data[voice_id] * {fac}",
-
-					# Remove voices that are extinct
-					f"for voice_id in set({node.output._variable}.data) - {in0_voices} - {in1_voices}:",
-					f"	{node.output._variable}.data.pop(voice_id)",
-				]
-			)
-		else:
-			unsupported(node)
+	elif isinstance(node.fac, Outlet):
+		fac = f"{node.fac._variable}.data[voice_id]"
 	else:
 		unsupported(node)
+
+	if isinstance(node.in0, Outlet):
+		process_code.append(f"		{node.in0._variable}.data[voice_id] * (1-{fac}) +")
+	elif isinstance(node.in0, (int, float)):
+		process_code.append(f"		{node.in0} * (1-{fac}) +")
+	else:
+		unsupported(node)
+
+	if isinstance(node.in1, Outlet):
+		process_code.append(f"		{node.in1._variable}.data[voice_id] * {fac}")
+	elif isinstance(node.in0, (int, float)):
+		process_code.append(f"		{node.in1} * {fac}")
+	else:
+		unsupported(node)
+
+	process_code.append("	)")
+
+	# Remove voices that are extinct
+	if isinstance(node.in0, Outlet) and isinstance(node.in1, Outlet):
+		process_code.append(f"for voice_id in set({node.output._variable}.data) - {in0_voices} - {in1_voices}:")
+	elif isinstance(node.in0, Outlet):
+		process_code.append(f"for voice_id in set({node.output._variable}.data) - {in0_voices}:")
+	elif isinstance(node.in1, Outlet):
+		process_code.append(f"for voice_id in set({node.output._variable}.data) - {in1_voices}:")
+	else:
+		# lol code
+		process_code.append("if 0:")
+	process_code.append(f"	{node.output._variable}.data.pop(voice_id)")
 
 
 def numpy_slew(
