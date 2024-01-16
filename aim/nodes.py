@@ -408,6 +408,7 @@ def _validate_python(text: str) -> None:
 			ast.Constant,
 			ast.Add,
 			ast.Sub,
+			ast.UnaryOp,
 			ast.Attribute,
 			ast.Mult,
 			ast.USub,
@@ -631,6 +632,7 @@ def test_forbidden_python() -> None:
 		"1-1",
 		"1*1",
 		"1/1",
+		"-1",
 		"_a = out(sine()); _a",
 	):
 		try:

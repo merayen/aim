@@ -235,22 +235,32 @@ def numpy_mix(
 	init_code: list[str],
 	process_code: list[str],
 ) -> None:
+	in0_voices = create_variable()
+	in1_voices = create_variable()
+
 	# TODO merayen how should we mix channel_map if in0 and in1 has different maps
 	init_code.append(f"{node.output._variable} = Signal()")
 
-	# TODO merayen handle having fac set and not, and if it is an Outlet
-	if isinstance(node.in0, Outlet) and isinstance(node.in1, Outlet):
-		process_code.extend(
-			[
-				# Create new voices we haven't created yet
-				f"for voice_id in set({node.in0._variable}.data).intersection({node.in1._variable}.data):",
-				f"	{node.output._variable}.data[voice_id] = {node.in0._variable}.data[voice_id] ",
+	if isinstance(node.fac, (int, float)):
+		fac = (max(min(node.fac, 1), -1) + 1) / 2
+		if isinstance(node.in0, Outlet) and isinstance(node.in1, Outlet):
+			process_code.append(f"{in0_voices} = set({node.in0._variable}.data)")
+			process_code.append(f"{in1_voices} = set({node.in1._variable}.data)")
 
-				# Remove voices that are extinct
-				f"for voice_id in set({node.output._variable}.data) - set({node.in0._variable}.data) - set({node.in1._variable}.data):",
-				f"	{node.output._variable}.data.pop(voice_id)",
-			]
-		)
+			process_code.extend(
+				[
+					f"for voice_id in {in0_voices}.intersection({in1_voices}):",
+					f"	{node.output._variable}.data[voice_id] ="
+						f"{node.in0._variable}.data[voice_id] * (1-{fac}) +"
+						f"{node.in1._variable}.data[voice_id] * {fac}",
+
+					# Remove voices that are extinct
+					f"for voice_id in set({node.output._variable}.data) - {in0_voices} - {in1_voices}:",
+					f"	{node.output._variable}.data.pop(voice_id)",
+				]
+			)
+		else:
+			unsupported(node)
 	else:
 		unsupported(node)
 
