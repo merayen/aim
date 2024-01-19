@@ -455,8 +455,73 @@ def numpy_oscilloscope(
 	init_code: list[str],
 	process_code: list[str],
 ) -> None:
+	# TODO merayen Implement triggering
+
+	buffer = create_variable()
+	samples_filled = create_variable()
+	last_update = create_variable()  # Last time we updated the oscilloscope view
+	pl = create_variable()
+
+	fig = create_variable()
+
+	init_code.append(f"{buffer} = {{}}")
+	init_code.append(f"{samples_filled} = 0")
+	init_code.append(f"{last_update} = 0")
+	init_code.append(f"import pylab as {pl}")
+	init_code.append(f"{fig} = {pl}.subplots(1,1)[0]")
+	init_code.append(f"{fig}.suptitle('Oscilloscope')")
+	init_code.append(f"{pl}.ion()")
+
+	process_code.append(f"global {samples_filled}")
+	process_code.append(f"global {last_update}")
+
 	if isinstance(node.value, Outlet):
-		raise NotImplementedError("")  # TODO merayen implement
+		# We just forward the whole Outlet, as we are only forwarding the data
+		init_code.append(f"{node.output._variable} = {node.value._variable}")
+
+		if isinstance(node.time_div, (int, float)):
+			# Look for new voices and create buffers for them
+			buffer_size = int(node_context.sample_rate * max(1E-4, min(1, node.time_div)))
+			process_code.append(f"for voice_id in set({node.value._variable}.data) - set({buffer}):")
+			process_code.append(f"	{buffer}[voice_id] = np.zeros({buffer_size})")
+		else:
+			unsupported(node)
+
+		# Remove dead voices
+		process_code.append(f"for voice_id in set({buffer}) - set({node.value._variable}.data):")
+		process_code.append(f"	{buffer}.pop(voice_id)")
+
+		if isinstance(node.time_div, (int, float)):
+			# Add samples to the buffer until it is full
+			process_code.append(f"if {samples_filled} < {buffer_size} and {node.value._variable}.data:")
+			process_code.append(f"	for voice_id, voice in {node.value._variable}.data.items():")
+			process_code.append(
+				f"		{buffer}[voice_id]["
+				f"{samples_filled}:{samples_filled} + min({node_context.frame_count}, {buffer_size} - {samples_filled})] = "
+				f"voice[:min({node_context.frame_count}, {buffer_size} - {samples_filled})]"
+			)
+
+			# Update the counter for samples sampled
+			process_code.append(f"	{samples_filled} += {node_context.frame_count}")
+		else:
+			unsupported(node)
+
+
+		# Check if we have enough samples and if it is time to update oscilloscope view
+		if isinstance(node.time_div, (int, float)):
+			process_code.append(f"print({samples_filled}, {buffer_size})")
+			process_code.append(f"if {samples_filled} >= {buffer_size} and {last_update} + 0.1 < time.time():")
+			process_code.append(f"	{last_update} = time.time()")
+
+			# TODO merayen this is global, what if we have multiple oscilloscopes...?
+			# Maybe we will need some common oscilloscope catcher on top that captures from multiple
+			# scopes?
+			process_code.append(f"	{pl}.gca().cla()")
+			process_code.append(f"	{pl}.plot(np.arange(10))")
+			process_code.append(f"	{pl}.plot(np.arange(10,20))")
+		else:
+			unsupported(node)
+
 	else:
 		unsupported(node)
 
@@ -497,6 +562,7 @@ def compile_to_numpy(context: Context, frame_count: int = 512, sample_rate: int 
 
 	init_code = [
 		"import numpy as np",
+		"import time",
 		"from collections import defaultdict",
 		"from dataclasses import dataclass, field",
 		f"_SILENCE = np.zeros({frame_count}, dtype='float32')",

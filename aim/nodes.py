@@ -371,9 +371,9 @@ class use(Node):
 
 
 @node
-class oscilloscope(Node):
+class oscilloscope(OutNode):
 	value: Any = 0.0
-	time_div: Any = 0.01
+	time_div: Any = 0.1
 
 	# Passthrough. Allows doing "out(oscilloscope(sine()))"
 	output = Outlet(DataType.SIGNAL)
