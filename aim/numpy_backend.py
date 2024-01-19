@@ -449,6 +449,18 @@ def numpy_audiofile(
 		unsupported(node)
 
 
+def numpy_oscilloscope(
+	node_context: NodeContext,
+	node: out,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	if isinstance(node.value, Outlet):
+		raise NotImplementedError("")  # TODO merayen implement
+	else:
+		unsupported(node)
+
+
 def numpy_out(node_context: NodeContext, node: out, init_code: list[str], process_code: list[str]) -> None:
 	assert node.name
 	assert "'" not in node.name
