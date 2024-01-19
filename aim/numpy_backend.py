@@ -351,6 +351,32 @@ def numpy_trigger(
 		unsupported(node)
 
 
+def numpy_clip(
+	node_context: NodeContext,
+	node: out,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	init_code.append(f"{node.output._variable} = Signal()")
+
+	if isinstance(node.value, Outlet):
+		if isinstance(node.minimum, (int, float)) and isinstance(node.maximum, (int, float)):
+			process_code.append(f"for voice_id, voice in {node.value._variable}.data.items():")
+			process_code.append(f"	{node.output._variable}.data[voice_id] = np.clip(voice, {node.minimum}, {node.maximum})")
+		else:
+			unsupported(node)
+	else:
+		unsupported(node)
+
+	# Remove voices that has disappeared
+	process_code.extend(
+		[
+			f"for voice_id in set({node.output._variable}.data) - set({node.value._variable}.data):",
+			f"	{node.output._variable}.data.pop(voice_id)",
+		]
+	)
+
+
 def numpy_poly(node_context: NodeContext, node: out, init_code: list[str], process_code: list[str]) -> None:
 	pass
 
@@ -421,6 +447,7 @@ def numpy_audiofile(
 	else:
 		# TODO merayen how to support multiple voices of this node that already creates voices? stack them?
 		unsupported(node)
+
 
 def numpy_out(node_context: NodeContext, node: out, init_code: list[str], process_code: list[str]) -> None:
 	assert node.name

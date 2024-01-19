@@ -273,6 +273,16 @@ class trigger(Node):
 
 
 @node
+class clip(Node):
+	value: Any = 0.0
+
+	minimum: Any = -1.0
+	maximum: Any = 1.0
+
+	output = Outlet(DataType.SIGNAL)
+
+
+@node
 class dB(Node):
 	"""Convert a dB number to a linear float.
 
