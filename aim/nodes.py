@@ -259,6 +259,20 @@ class slew(Node):
 
 
 @node
+class trigger(Node):
+	# The value that is to be triggered on
+	value: Any = 0.0
+
+	# Equal or more than this value outputs 1.0 on the output
+	start: Any = 0.5
+
+	# Less than this value output 0.0 on the output
+	stop: Any = 0.5
+
+	output = Outlet(DataType.SIGNAL)
+
+
+@node
 class dB(Node):
 	"""Convert a dB number to a linear float.
 

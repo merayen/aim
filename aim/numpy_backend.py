@@ -253,7 +253,7 @@ def numpy_mix(
 	elif isinstance(node.in1, Outlet):
 		process_code.append(f"for voice_id in {in1_voices}:")
 	else:
-		process_code.append(f"for voice_id in [0]:")
+		process_code.append("for voice_id in [0]:")
 	process_code.append(f"	{node.output._variable}.data[voice_id] = (")
 
 	if isinstance(node.fac, (int, float)):
@@ -299,6 +299,56 @@ def numpy_slew(
 	process_code: list[str],
 ) -> None:
 	raise NotImplementedError("")  # TODO merayen implement
+
+
+def numpy_trigger(
+	node_context: NodeContext,
+	node: out,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	current_value = create_variable()
+	method = create_variable()
+
+	init_code.append(f"{node.output._variable} = Signal()")
+	init_code.append(f"{current_value} = defaultdict(lambda: 0.0)")
+
+	# XXX What is quickest? Dynamically determine numpy array length and arguments, or statically code it?
+	init_code.append("from numba import njit")
+	init_code.append("@njit")
+	init_code.append(f"def {method}(current, input_arr, output_arr, start, stop):")
+	init_code.append("	for i, x in enumerate(input_arr):")
+	init_code.append("		if x >= start:")
+	init_code.append("			current = 1.0")
+	init_code.append("		elif x < stop:")
+	init_code.append("			current = 0.0")
+	init_code.append("		output_arr[i] = current")
+	init_code.append("	return current")
+
+	if isinstance(node.value, Outlet):
+		if isinstance(node.start, (int, float)) and isinstance(node.stop, (int, float)):
+			process_code.append(f"for voice_id, voice in {node.value._variable}.data.items():")
+			process_code.append(f"	if voice_id not in {node.output._variable}.data:")
+			process_code.append(f"		{node.output._variable}.data[voice_id] = np.zeros({node_context.frame_count})")
+			process_code.append(f"	{current_value}[voice_id] = {method}(")
+			process_code.append(f"		{current_value}[voice_id],")
+			process_code.append("		voice,")
+			process_code.append(f"		{node.output._variable}.data[voice_id],")
+			process_code.append(f"		{node.start},")
+			process_code.append(f"		{node.stop},")
+			process_code.append(")")
+
+			# Remove voices that has disappeared
+			process_code.extend(
+				[
+					f"for voice_id in set({node.output._variable}.data) - set({node.value._variable}.data):",
+					f"	{node.output._variable}.data.pop(voice_id)",
+				]
+			)
+		else:
+			raise NotImplementedError("Support different types or start and stop input")
+	else:
+		unsupported(node)
 
 
 def numpy_poly(node_context: NodeContext, node: out, init_code: list[str], process_code: list[str]) -> None:
