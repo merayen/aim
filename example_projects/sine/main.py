@@ -1,3 +1,3 @@
 out(
-	oscilloscope(square())
+	oscilloscope(square(4400))
 )

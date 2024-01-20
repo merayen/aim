@@ -22,8 +22,31 @@ if opts.command == "run":
 	assert os.path.isfile("main.py"), f"main.py not found in directory {opts.path}"
 
 	from aim.nodes import load, run
+	from aim.ui import run_ui
+	from threading import Thread
 	with open("main.py") as f:
-		run(load(f.read()))
+		# We default with having a UI for our disposal.
+
+		# Create a thread for compiling and running (as a child process) the created program.
+		# Kivy needs to run in the mainloop, so we keep these separate.
+		class state:
+			running = True
+
+		def tick_aim():
+			for _ in run(load(f.read())):
+				if not state.running:
+					break
+
+		aim_thread = Thread(target=tick_aim)
+		aim_thread.start()
+
+		try:
+			run_ui()
+		except KeyboardInterrupt:
+			pass
+
+		state.running = False
+		aim_thread.join()
 
 
 # aim

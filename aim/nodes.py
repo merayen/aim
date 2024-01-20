@@ -556,7 +556,7 @@ def _init_listeners(order: list[int], node_ids: dict[str, Node]) -> dict:
 	return result
 
 
-def run(context: Context) -> None:
+def run(context: Context):
 	# TODO merayen this method should probably be in its own module...?
 
 	from aim.numpy_backend import compile_to_numpy
@@ -586,13 +586,20 @@ def run(context: Context) -> None:
 				line = process.stdout.readline()
 				try:
 					node_data = json.loads(line)
-					if node_data.get("debug"):  # Print to stdout
+					if node_data == {"status": 0}:
+						# Sent for every frame processed.
+						# This unblocks readline() so that we can yield to the caller.
+						pass
+					elif node_data.get("debug"):  # Print to stdout
 						print(f"DEBUG: Node {node_data['name']} says: {node_data['data']}")
 					else:
 						listeners[node_data["node_id"]].receive(**node_data["data"])
 				except json.decoder.JSONDecodeError:
 					print("Invalid JSON data from created program: {}")
 					break
+
+				# Give control back to the caller.
+				yield
 		except KeyboardInterrupt:
 			pass
 

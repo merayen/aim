@@ -604,6 +604,7 @@ def compile_to_numpy(
 	# Emit statistic data to stdout and return data
 	process_code.extend(
 		[
+			"""print('{"status": 0}')""",  # Notify that we have processed a buffer
 			"sys.stdout.flush()",
 			"return output",
 		]
