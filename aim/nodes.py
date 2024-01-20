@@ -5,6 +5,7 @@ from functools import cached_property
 from typing import Any, Optional
 
 import contextvars
+import json
 import os
 
 from aim import importing
@@ -268,6 +269,9 @@ class trigger(Node):
 
 	# Less than this value output 0.0 on the output
 	stop: Any = 0.5
+
+	# If connected, react on trigger from this source
+	trigger: Optional[Any] = None
 
 	output = Outlet(DataType.SIGNAL)
 
@@ -544,6 +548,25 @@ def run(context: Context) -> None:
 	with open(".numpy_program.py", "w") as f:
 		f.write(code)
 
+	# Start a new python interpreter that executes the code
+	# TODO merayen maybe support a daemon that receives this code and executes it, and that allows for module loading and de-loading
+	import subprocess
+	with subprocess.Popen(["python3", ".numpy_program.py"], stdout=subprocess.PIPE, universal_newlines=True) as process:
+		try:
+			while process.poll() is None:
+				line = process.stdout.readline()
+				try:
+					data = json.loads(line)
+					print(data)
+				except json.decoder.JSONDecodeError:
+					print("Invalid JSON data from created program: {}")
+					break
+		except KeyboardInterrupt:
+			pass
+
+		process.kill()
+
+	return
 	try:
 		exec(code, {})
 	except KeyboardInterrupt:
