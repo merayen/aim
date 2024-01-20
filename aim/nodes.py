@@ -121,6 +121,15 @@ class Context:
 	unnamed_counter: int = 0
 
 
+@dataclass(frozen=True)
+class CompilationContext:
+	context: Context
+	graph: dict[int, set[int]]
+	node_ids: dict[int, Node]
+	order: list[int]
+
+
+
 _PARSE_CONTEXT = contextvars.ContextVar("_PARSE_CONTEXT")
 
 
@@ -536,12 +545,27 @@ def execution_order(graph: dict[int, set[int]]) -> list[int]:
 	return result
 
 
+def _init_listeners(order: list[int], node_ids: dict[str, Node]) -> dict:
+	import aim.listeners
+
+	result = {}
+	for node_id in order:
+		if listener := getattr(aim.listeners, f"{node_ids[node_id].__class__.__name__}_listener", None):
+			result[node_id] = listener(node_ids[node_id])
+
+	return result
+
+
 def run(context: Context) -> None:
 	# TODO merayen this method should probably be in its own module...?
 
 	from aim.numpy_backend import compile_to_numpy
 
-	code: str = compile_to_numpy(context)
+	graph, node_ids = build_node_graph(context)
+	order = execution_order(graph)
+
+	compilation_context = CompilationContext(context, graph, node_ids, order)
+	code: str = compile_to_numpy(compilation_context)
 
 	# Add code that plays back
 	with open(f"{os.path.split(__file__)[0]}{os.path.sep}audio_interface.py") as f:
@@ -549,6 +573,9 @@ def run(context: Context) -> None:
 
 	with open(".numpy_program.py", "w") as f:
 		f.write(code)
+
+	# Initialize all the listeners that listens to data from each node
+	listeners = _init_listeners(order, node_ids)
 
 	# Start a new python interpreter that executes the code
 	# TODO merayen maybe support a daemon that receives this code and executes it, and that allows for module loading and de-loading
@@ -561,7 +588,8 @@ def run(context: Context) -> None:
 					node_data = json.loads(line)
 					if node_data.get("debug"):  # Print to stdout
 						print(f"DEBUG: Node {node_data['name']} says: {node_data['data']}")
-					# TODO merayen send the data somewhere. E.g, the node's own "data receiver" or something?
+					else:
+						listeners[node_data["node_id"]].receive(**node_data["data"])
 				except json.decoder.JSONDecodeError:
 					print("Invalid JSON data from created program: {}")
 					break

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from aim.nodes import (
-	Node, create_variable, Outlet, Context, build_node_graph, execution_order, DataType,
-	sine, out,
+	Node, create_variable, Outlet, Context, DataType,
+	sine, out, CompilationContext,
 )
 from typing import Any
 
@@ -509,20 +509,11 @@ def numpy_oscilloscope(
 
 		# Check if we have enough samples and if it is time to update oscilloscope view
 		if isinstance(node.time_div, (int, float)):
-			debug_print(
-				node,
-				process_code,
-				f"{{'samples_filled': {samples_filled}, 'buffer_size': {buffer_size}}}",
-			)
 			process_code.append(f"if {samples_filled} >= {buffer_size} and {last_update} + 0.1 < time.time():")
 			process_code.append(f"	{last_update} = time.time()")
-
-			# TODO merayen this is global, what if we have multiple oscilloscopes...?
-			# Maybe we will need some common oscilloscope catcher on top that captures from multiple
-			# scopes?
-			process_code.append(f"	{pl}.gca().cla()")
-			process_code.append(f"	{pl}.plot(np.arange(10))")
-			process_code.append(f"	{pl}.plot(np.arange(10,20))")
+			process_code.append(
+				emit_data(node, f"	{{'plot_data': {{voice_id: data.tolist() for voice_id, data in {buffer}.items()}} }}")
+			)
 		else:
 			unsupported(node)
 
@@ -555,12 +546,12 @@ def numpy_out(node_context: NodeContext, node: out, init_code: list[str], proces
 		raise NotImplementedError("Support other types of input")  # TODO merayen support other types of input for out.input
 
 
-def compile_to_numpy(context: Context, frame_count: int = 512, sample_rate: int = 48000) -> str:
+def compile_to_numpy(
+	compilation_context: CompilationContext,
+	frame_count: int = 512,
+	sample_rate: int = 48000,
+) -> str:
 	# Start backwards and create dependency graph
-	graph, node_ids = build_node_graph(context)
-
-	order = execution_order(graph)
-
 	init_code = []
 	process_code = []
 
@@ -597,8 +588,8 @@ def compile_to_numpy(context: Context, frame_count: int = 512, sample_rate: int 
 		sample_rate=sample_rate,
 	)
 
-	for node_id in order:
-		node = node_ids[node_id]
+	for node_id in compilation_context.order:
+		node = compilation_context.node_ids[node_id]
 		assert isinstance(node, Node), (type(node), Node)
 
 		func = globals().get(f"numpy_{node.__class__.__name__}")
@@ -626,13 +617,13 @@ def compile_to_numpy(context: Context, frame_count: int = 512, sample_rate: int 
 	return code
 
 
-def emit_data(node: Node, process_code: list[str], code: str):
+def emit_data(node: Node, code: str) -> str:
 	"""
 	Emit data from node to parent process
 
 	E.g, the plot data for an oscilloscope.
 	"""
-	process_code.append(f"print(json.dumps({{'node': '{id(node)}', 'name': '{node.__class__.__name__}', 'data': {code}}}))")
+	return f"print(json.dumps({{'node_id': {id(node)}, 'name': '{node.__class__.__name__}', 'data': {code}}}))"
 
 
 def debug_print(node: Node, process_code: list[str], code: str):
