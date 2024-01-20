@@ -509,7 +509,7 @@ def numpy_oscilloscope(
 
 		# Check if we have enough samples and if it is time to update oscilloscope view
 		if isinstance(node.time_div, (int, float)):
-			emit_data(
+			debug_print(
 				node,
 				process_code,
 				f"{{'samples_filled': {samples_filled}, 'buffer_size': {buffer_size}}}",
@@ -582,7 +582,6 @@ def compile_to_numpy(context: Context, frame_count: int = 512, sample_rate: int 
 		"	data: dict = field(default_factory=lambda:{})",  # TODO merayen rename data to voices?
 		"	channel_map: dict = field(default_factory=lambda:{})",
 		"random = np.random.default_rng()",
-		#f"{_data_output_queue} = []",
 	]
 
 	process_code = [
@@ -627,11 +626,23 @@ def compile_to_numpy(context: Context, frame_count: int = 512, sample_rate: int 
 	return code
 
 
-#_data_output_queue = create_variable()
-
 def emit_data(node: Node, process_code: list[str], code: str):
+	"""
+	Emit data from node to parent process
+
+	E.g, the plot data for an oscilloscope.
+	"""
 	process_code.append(f"print(json.dumps({{'node': '{id(node)}', 'name': '{node.__class__.__name__}', 'data': {code}}}))")
-	#process_code.append(f"{_data_output_queue}.append({code})")
+
+
+def debug_print(node: Node, process_code: list[str], code: str):
+	"""
+	Output data straight to stdout
+
+	Only meant for when developing nodes, not normal usage.
+	"""
+	# TODO merayen probably only do this when "aim --debug"
+	process_code.append(f"print(json.dumps({{'node': '{id(node)}', 'name': '{node.__class__.__name__}', 'debug': True, 'data': {code}}}))")
 
 
 def unsupported(node: Node):

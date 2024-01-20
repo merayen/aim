@@ -537,6 +537,8 @@ def execution_order(graph: dict[int, set[int]]) -> list[int]:
 
 
 def run(context: Context) -> None:
+	# TODO merayen this method should probably be in its own module...?
+
 	from aim.numpy_backend import compile_to_numpy
 
 	code: str = compile_to_numpy(context)
@@ -556,8 +558,10 @@ def run(context: Context) -> None:
 			while process.poll() is None:
 				line = process.stdout.readline()
 				try:
-					data = json.loads(line)
-					print(data)
+					node_data = json.loads(line)
+					if node_data.get("debug"):  # Print to stdout
+						print(f"DEBUG: Node {node_data['name']} says: {node_data['data']}")
+					# TODO merayen send the data somewhere. E.g, the node's own "data receiver" or something?
 				except json.decoder.JSONDecodeError:
 					print("Invalid JSON data from created program: {}")
 					break
