@@ -185,7 +185,7 @@ def _numpy_math(
 		)
 	elif isinstance(node.in0, Outlet) and isinstance(node.in1, Outlet):
 		# TODO merayen remove voices that disappears on the input
-		process_code.append(f"{node.output._variable} = Signal()")
+		init_code.append(f"{node.output._variable} = Signal()")
 		if node.in0.datatype == DataType.SIGNAL and node.in1.datatype == DataType.SIGNAL:
 			process_code.extend(
 				[
@@ -197,7 +197,7 @@ def _numpy_math(
 			unsupported(node)
 	elif isinstance(node.in0, (int, float)) and isinstance(node.in1, Outlet):
 		# TODO merayen remove voices that disappears on the input
-		process_code.append(f"{node.output._variable} = Signal()")
+		init_code.append(f"{node.output._variable} = Signal()")
 		if node.in1.datatype == DataType.SIGNAL:
 			process_code.extend(
 				[
@@ -209,7 +209,7 @@ def _numpy_math(
 			unsupported(node)
 	elif isinstance(node.in0, Outlet) and isinstance(node.in1, (int, float)):
 		# TODO merayen remove voices that disappears on the input
-		process_code.append(f"{node.output._variable} = Signal()")
+		init_code.append(f"{node.output._variable} = Signal()")
 		if node.in0.datatype == DataType.SIGNAL:
 			process_code.extend(
 				[
