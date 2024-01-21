@@ -2,6 +2,9 @@
 Handlers that listens for the output data for each node
 
 E.g, an oscilloscope node that creates UI and reads plot data from the oscilloscope node.
+
+Hardcoded to kyvi for now. Could also send outgoing node data on UDP and such, but we don't plan for
+that for now.
 """
 from typing import Optional
 
@@ -11,6 +14,10 @@ from aim.nodes import Node
 class Listener:
 	def __init__(self, node: Node):
 		self.node = node
+		self.setup()
+
+	def setup(self):
+		pass
 
 	def receive(self, **kwargs):
 		raise NotImplementedError

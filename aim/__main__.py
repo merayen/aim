@@ -23,22 +23,12 @@ if opts.command == "run":
 
 	from aim.nodes import load
 	from aim.run import CompileAndRun
-	from aim.ui import run_ui
-	from threading import Thread
 
 	with open("main.py") as f:
 		# We default with having a UI for our disposal.
 
 		# Create a thread for compiling and running (as a child process) the created program.
-		# Kivy needs to run in the mainloop, so we keep these separate.
 		compile_and_run = CompileAndRun(load(f.read()))
-
-		try:
-			run_ui()
-		except KeyboardInterrupt:
-			pass
-
-		compile_and_run.stop()
 
 
 # aim
