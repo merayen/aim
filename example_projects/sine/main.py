@@ -1,3 +1,3 @@
 out(
-	oscilloscope(square(440))
+	oscilloscope(sine(sine(.5) * 100 + 220))
 )

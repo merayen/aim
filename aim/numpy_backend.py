@@ -506,14 +506,14 @@ def numpy_oscilloscope(
 		else:
 			unsupported(node)
 
-
 		# Check if we have enough samples and if it is time to update oscilloscope view
 		if isinstance(node.time_div, (int, float)):
-			process_code.append(f"if {samples_filled} >= {buffer_size} and {last_update} + 0.1 < time.time():")
+			process_code.append(f"if {samples_filled} >= {buffer_size} and {last_update} + 0.05 < time.time():")
 			process_code.append(f"	{last_update} = time.time()")
 			process_code.append(
-				emit_data(node, f"	{{'plot_data': {{voice_id: data.tolist() for voice_id, data in {buffer}.items()}} }}")
+				"	" + emit_data(node, f"	{{'plot_data': {{voice_id: data.tolist() for voice_id, data in {buffer}.items()}} }}")
 			)
+			process_code.append(f"	{samples_filled} = 0")
 		else:
 			unsupported(node)
 

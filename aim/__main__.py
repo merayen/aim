@@ -30,6 +30,12 @@ if opts.command == "run":
 		# Create a thread for compiling and running (as a child process) the created program.
 		compile_and_run = CompileAndRun(load(f.read()))
 
+		try:
+			compile_and_run.mainloop_mainthread()
+		except KeyboardInterrupt:
+			pass
+
+		compile_and_run.stop()
 
 # aim
 # Automatically runs the project in the current folder using the numpy backend
