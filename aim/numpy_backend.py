@@ -331,33 +331,46 @@ def numpy_trigger(
 	)
 
 	if isinstance(node.value, Outlet):
-		if isinstance(node.start, (int, float)) and isinstance(node.stop, (int, float)):
-			start = create_variable()
-			stop = create_variable()
 
+		if isinstance(node.start, (int, float)):
+			start = create_variable()
 			init_code.append(f"{start} = np.zeros({node_context.frame_count}) + {node.start}")
+
+		if isinstance(node.stop, (int, float)):
+			stop = create_variable()
 			init_code.append(f"{stop} = np.zeros({node_context.frame_count}) + {node.stop}")
 
-			process_code.append(f"for voice_id, voice in {node.value._variable}.data.items():")
-			process_code.append(f"	if voice_id not in {node.output._variable}.data:")
-			process_code.append(f"		{node.output._variable}.data[voice_id] = np.zeros({node_context.frame_count})")
-			process_code.append(f"	{current_value}[voice_id] = {method}(")
-			process_code.append(f"		{current_value}[voice_id],")
-			process_code.append("		voice,")
-			process_code.append(f"		{node.output._variable}.data[voice_id],")
-			process_code.append(f"		{start},")
-			process_code.append(f"		{stop},")
-			process_code.append(")")
+		process_code.append(f"for voice_id, voice in {node.value._variable}.data.items():")
+		process_code.append(f"	if voice_id not in {node.output._variable}.data:")
+		process_code.append(f"		{node.output._variable}.data[voice_id] = np.zeros({node_context.frame_count})")
+		process_code.append(f"	{current_value}[voice_id] = {method}(")
+		process_code.append(f"		{current_value}[voice_id],")
+		process_code.append("		voice,")
+		process_code.append(f"		{node.output._variable}.data[voice_id],")
 
-			# Remove voices that has disappeared
-			process_code.extend(
-				[
-					f"for voice_id in set({node.output._variable}.data) - set({node.value._variable}.data):",
-					f"	{node.output._variable}.data.pop(voice_id)",
-				]
-			)
+		if isinstance(node.start, (int, float)):
+			process_code.append(f"		{start},")
+		elif isinstance(node.start, Outlet):
+			process_code.append(f"		{node.start._variable}.data[voice_id],")
 		else:
-			raise NotImplementedError("Support different types or start and stop input")
+			unsupported(node)
+
+		if isinstance(node.stop, (int, float)):
+			process_code.append(f"		{stop},")
+		elif isinstance(node.stop, Outlet):
+			process_code.append(f"		{node.stop._variable}.data[voice_id],")
+		else:
+			unsupported(node)
+
+		process_code.append(")")
+
+		# Remove voices that has disappeared
+		process_code.extend(
+			[
+				f"for voice_id in set({node.output._variable}.data) - set({node.value._variable}.data):",
+				f"	{node.output._variable}.data.pop(voice_id)",
+			]
+		)
 	else:
 		unsupported(node)
 

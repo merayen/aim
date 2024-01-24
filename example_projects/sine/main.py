@@ -1,9 +1,11 @@
+_a=sine(.5)
+
 out(
 	oscilloscope(
 		trigger(
-			sine(220),
-			start=0.99,
-			stop=0.99,
-		) - .5
+			sine(220*2.1),
+			start=_a,
+			stop=_a,
+		) * square(10)
 	)
 )
