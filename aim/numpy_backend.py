@@ -308,25 +308,36 @@ def numpy_trigger(
 	process_code: list[str],
 ) -> None:
 	current_value = create_variable()
-	method = create_variable()
 
 	init_code.append(f"{node.output._variable} = Signal()")
 	init_code.append(f"{current_value} = defaultdict(lambda: 0.0)")
 
-	# XXX What is quickest? Dynamically determine numpy array length and arguments, or statically code it?
-	init_code.append("from numba import njit")
-	init_code.append("@njit")
-	init_code.append(f"def {method}(current, input_arr, output_arr, start, stop):")
-	init_code.append("	for i, x in enumerate(input_arr):")
-	init_code.append("		if x >= start:")
-	init_code.append("			current = 1.0")
-	init_code.append("		elif x < stop:")
-	init_code.append("			current = 0.0")
-	init_code.append("		output_arr[i] = current")
-	init_code.append("	return current")
+	method = introduce_method(
+		init_code,
+		[
+			"import numba",
+			"@numba.njit",
+			"def METHOD_NAME(current, input_array, output_array, start_array, stop_array):",
+			"	assert len(input_array) == len(output_array) == len(start_array) == len(stop_array)",
+			"",
+			"	for i in range(len(input_array)):",
+			"		if input_array[i] >= start_array[i]:",
+			"			current = 1.0",
+			"		elif input_array[i] < stop_array[i]:",
+			"			current = 0.0",
+			"		output_array[i] = current",
+			"	return current",
+		]
+	)
 
 	if isinstance(node.value, Outlet):
 		if isinstance(node.start, (int, float)) and isinstance(node.stop, (int, float)):
+			start = create_variable()
+			stop = create_variable()
+
+			init_code.append(f"{start} = np.zeros({node_context.frame_count}) + {node.start}")
+			init_code.append(f"{stop} = np.zeros({node_context.frame_count}) + {node.stop}")
+
 			process_code.append(f"for voice_id, voice in {node.value._variable}.data.items():")
 			process_code.append(f"	if voice_id not in {node.output._variable}.data:")
 			process_code.append(f"		{node.output._variable}.data[voice_id] = np.zeros({node_context.frame_count})")
@@ -334,8 +345,8 @@ def numpy_trigger(
 			process_code.append(f"		{current_value}[voice_id],")
 			process_code.append("		voice,")
 			process_code.append(f"		{node.output._variable}.data[voice_id],")
-			process_code.append(f"		{node.start},")
-			process_code.append(f"		{node.stop},")
+			process_code.append(f"		{start},")
+			process_code.append(f"		{stop},")
 			process_code.append(")")
 
 			# Remove voices that has disappeared
@@ -616,6 +627,20 @@ def compile_to_numpy(
 	code += "\ndef numpy_process():\n" + "\n".join(f"\t{x}" for x in process_code)
 
 	return code
+
+
+def introduce_method(init_code: list[str], lines: list[str]):
+	if lines in introduce_method.lines.values():
+		return next(k for k,v in introduce_method.items() if v == lines) # Already defined
+
+	method_name = create_variable()
+	
+	init_code.extend([x.replace("METHOD_NAME", method_name) for x in lines])
+
+	introduce_method.lines[method_name] = lines
+
+	return method_name
+introduce_method.lines = {}
 
 
 def emit_data(node: Node, code: str) -> str:

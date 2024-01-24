@@ -1,3 +1,9 @@
 out(
-	oscilloscope(sine(sine(4) * 110 + 440) + square(sine(2) * 220 + 440), time_div=1E-2)
+	oscilloscope(
+		trigger(
+			sine(220),
+			start=0.99,
+			stop=0.99,
+		) - .5
+	)
 )
