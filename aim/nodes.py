@@ -43,6 +43,14 @@ class Node(Entity):
 	def __truediv__(self, other) -> "div":
 		return div(self, other)
 
+	def __gt__(self, other):
+		# XXX Not working, for some reason
+		return trigger(self, other)
+
+	def __lt__(self, other) -> "trigger":
+		# XXX Not working, for some reason
+		raise NotImplementedError("support lt comparison")  # TODO merayen support lt comparison
+
 	def _first_outlet(self) -> Optional["Outlet"]:
 		# Node is sent as input, get the first outlet
 		outlets = []
@@ -450,6 +458,9 @@ def _validate_python(text: str) -> None:
 	for x in ast.walk(ast.parse(text)):
 		if isinstance(x, (
 			ast.Div,
+			ast.Gt,
+			ast.Lt,
+			ast.Compare,
 			ast.Module,
 			ast.Expr,
 			ast.Load,  # TODO merayen what is this?
