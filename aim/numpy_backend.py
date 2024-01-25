@@ -479,25 +479,27 @@ def numpy_oscilloscope(
 	init_code: list[str],
 	process_code: list[str],
 ) -> None:
-	# TODO merayen Implement triggering
+	# TODO merayen Implement triggering. Probably a trigger that starts individually per voice
 
 	buffer = create_variable()
 	samples_filled = create_variable()
+	is_triggering = create_variable()
+	trigger_at = create_variable()
 	last_update = create_variable()  # Last time we updated the oscilloscope view
 	pl = create_variable()
 
-	fig = create_variable()
-
 	init_code.append(f"{buffer} = {{}}")
 	init_code.append(f"{samples_filled} = 0")
+	init_code.append(f"{is_triggering} = {{}}")
+	init_code.append(f"{trigger_at} = {{}}")  # Where in the current buffer to start triggering
 	init_code.append(f"{last_update} = 0")
 	init_code.append(f"import pylab as {pl}")
-	init_code.append(f"{fig} = {pl}.subplots(1,1)[0]")
-	init_code.append(f"{fig}.suptitle('Oscilloscope')")
 	init_code.append(f"{pl}.ion()")
 
 	process_code.append(f"global {samples_filled}")
 	process_code.append(f"global {last_update}")
+	process_code.append(f"global {is_triggering}")
+	process_code.append(f"global {trigger_at}")
 
 	if isinstance(node.value, Outlet):
 		# We just forward the whole Outlet, as we are only forwarding the data
@@ -508,6 +510,8 @@ def numpy_oscilloscope(
 			buffer_size = int(node_context.sample_rate * max(1E-4, min(1, node.time_div)))
 			process_code.append(f"for voice_id in set({node.value._variable}.data) - set({buffer}):")
 			process_code.append(f"	{buffer}[voice_id] = np.zeros({buffer_size})")
+			process_code.append(f"	{trigger_at}[voice_id] = -1")
+			process_code.append(f"	{is_triggering}[voice_id] = False")
 		else:
 			unsupported(node)
 
@@ -515,10 +519,25 @@ def numpy_oscilloscope(
 		process_code.append(f"for voice_id in set({buffer}) - set({node.value._variable}.data):")
 		process_code.append(f"	{buffer}.pop(voice_id)")
 
+		# Decide if we are to start triggering.
+		# Scans each voice's buffer for trigger point.
+		if isinstance(node.trigger, (int, float)):
+			# TODO merayen iterate each voice to find trigger points
+			process_code.append(f"for voice_id, voice in {node.value._variable}.data.items():")
+			process_code.append(f"	if {is_triggering}: continue")
+			process_code.append(f"	{trigger_at}[voice_id] = np.argmax(voice >= {node.trigger})")
+			# A very special case as argmax does not return -1 when not found
+			process_code.append(f"	if {trigger_at}[voice_id] == 0 and voice[0] < {node.trigger}:")
+			# Nope, didn't find trigger point after all
+			process_code.append(f"		{trigger_at}[voice_id] = -1")
+		else:
+			unsupported(node)
+
 		if isinstance(node.time_div, (int, float)):
 			# Add samples to the buffer until it is full
 			process_code.append(f"if {samples_filled} < {buffer_size} and {node.value._variable}.data:")
 			process_code.append(f"	for voice_id, voice in {node.value._variable}.data.items():")
+			# TODO merayen implement listening for the trigger_at here
 			process_code.append(
 				f"		{buffer}[voice_id]["
 				f"{samples_filled}:{samples_filled} + min({node_context.frame_count}, {buffer_size} - {samples_filled})] = "
@@ -534,6 +553,7 @@ def numpy_oscilloscope(
 		if isinstance(node.time_div, (int, float)):
 			process_code.append(f"if {samples_filled} >= {buffer_size} and {last_update} + 0.05 < time.time():")
 			process_code.append(f"	{last_update} = time.time()")
+			process_code.append(f"	{is_triggering} = False")
 			process_code.append(
 				"	" + emit_data(node, f"	{{'plot_data': {{voice_id: data.tolist() for voice_id, data in {buffer}.items()}} }}")
 			)
