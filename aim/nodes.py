@@ -251,6 +251,7 @@ class noise(Node):
 	voices: Any = None
 
 
+@node
 class saw(Node):
 	frequency: Any = 440
 
