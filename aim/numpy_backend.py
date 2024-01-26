@@ -34,7 +34,7 @@ def _oscillator_clock(
 			f"{clock_array} = {clock} + "
 			f"np.cumsum(_ONES * ({node.frequency} / {node_context.sample_rate}))"
 		)
-		process_code.append(f"{node.output._variable}.data[0] = {func}")
+		process_code.append(f"{node.output._variable}.voices[0] = {func}")
 		process_code.append(f"{clock} = {clock_array}[-1]")
 
 	elif isinstance(node.frequency, Outlet):
@@ -47,18 +47,18 @@ def _oscillator_clock(
 		# TODO merayen remove voices that disappears on the input
 		process_code.extend(
 			[
-				f"for voice_id, data in {node.frequency._variable}.data.items():",
+				f"for voice_id, data in {node.frequency._variable}.voices.items():",
 				f"	{clock_array} = {clock}[voice_id] +"
 				f"	np.cumsum(_ONES * (data / {node_context.sample_rate}))",
 				f"	{clock}[voice_id] = {clock_array}[-1] % 1",
-				f"	{node.output._variable}.data[voice_id] = {func}",
+				f"	{node.output._variable}.voices[voice_id] = {func}",
 			]
 		)
 
 		# Remove voices that has disappeared
 		process_code.extend(
 			[
-				f"for voice_id in set({node.output._variable}.data) - set({node.frequency._variable}.data):",
+				f"for voice_id in set({node.output._variable}.voices) - set({node.frequency._variable}.voices):",
 				f"	{clock}.pop(voice_id)",
 				f"	{node.output._variable}.data.pop(voice_id)",
 			]
@@ -111,7 +111,7 @@ def numpy_square(
 				node,
 				init_code,
 				process_code,
-				f"(%(clock_array)s %% 1 > {node.duty._variable}.data.get(%(voice_id)s, _ONES)).astype('float32') * 2 - 1",
+				f"(%(clock_array)s %% 1 > {node.duty._variable}.voices.get(%(voice_id)s, _ONES)).astype('float32') * 2 - 1",
 			)
 		else:
 			unsupported(node)
@@ -145,21 +145,21 @@ def numpy_noise(
 	if isinstance(node.voices, Outlet):
 		process_code.extend(
 			[
-				"for voice_id in {node.voices._variable}.data:",
-					f"	{node.output._variable}.data[0] = random.random(({node_context.frame_count},), dtype='float32') * 2 - 1",
+				"for voice_id in {node.voices._variable}.voices:",
+					f"	{node.output._variable}.voices[0] = random.random(({node_context.frame_count},), dtype='float32') * 2 - 1",
 			]
 		)
 
 		# Remove voices that are extinct
 		process_code.extend(
 			[
-				f"for voice_id in set({node.output._variable}.data) - set({node.voices._variable}.data)",
-				f"	{node.output._variable}.data.pop(voice_id)",
+				f"for voice_id in set({node.output._variable}.voices) - set({node.voices._variable}.voices)",
+				f"	{node.output._variable}.voices.pop(voice_id)",
 			]
 		)
 	else:
 		process_code.append(
-			f"{node.output._variable}.data[0] = random.random(({node_context.frame_count},), dtype='float32') * 2 - 1"
+			f"{node.output._variable}.voices[0] = random.random(({node_context.frame_count},), dtype='float32') * 2 - 1"
 		)
 
 
@@ -180,7 +180,7 @@ def _numpy_math(
 	if isinstance(node.in0, (int, float)) and isinstance(node.in1, (int, float)):
 		# Number never changes, sum it only once
 		init_code.append(
-				f"{node.output._variable} = Signal(data={{0:"
+				f"{node.output._variable} = Signal(voices={{0:"
 				f"np.zeros({node_context.frame_count}) + {eval('node.in0'+op+'node.in1')}}})"
 		)
 	elif isinstance(node.in0, Outlet) and isinstance(node.in1, Outlet):
@@ -189,8 +189,8 @@ def _numpy_math(
 		if node.in0.datatype == DataType.SIGNAL and node.in1.datatype == DataType.SIGNAL:
 			process_code.extend(
 				[
-					f"for voice_id in set({node.in0._variable}.data.keys()).union({node.in1._variable}.data.keys()):",
-					f"	{node.output._variable}.data[voice_id] = {node.in0._variable}.data.get(voice_id, _SILENCE) {op} {node.in1._variable}.data.get(voice_id, _SILENCE)",
+					f"for voice_id in set({node.in0._variable}.voices.keys()).union({node.in1._variable}.voices.keys()):",
+					f"	{node.output._variable}.voices[voice_id] = {node.in0._variable}.voices.get(voice_id, _SILENCE) {op} {node.in1._variable}.voices.get(voice_id, _SILENCE)",
 				]
 			)
 		else:
@@ -201,8 +201,8 @@ def _numpy_math(
 		if node.in1.datatype == DataType.SIGNAL:
 			process_code.extend(
 				[
-					f"for voice_id in {node.in1._variable}.data:",
-					f"	{node.output._variable}.data[voice_id] = {node.in0} {op} {node.in1._variable}.data.get(voice_id, _SILENCE)",
+					f"for voice_id in {node.in1._variable}.voices:",
+					f"	{node.output._variable}.voices[voice_id] = {node.in0} {op} {node.in1._variable}.voices.get(voice_id, _SILENCE)",
 				]
 			)
 		else:
@@ -213,8 +213,8 @@ def _numpy_math(
 		if node.in0.datatype == DataType.SIGNAL:
 			process_code.extend(
 				[
-					f"for voice_id in {node.in0._variable}.data:",
-					f"	{node.output._variable}.data[voice_id] = {node.in0._variable}.data.get(voice_id, _SILENCE) {op} {node.in1}",
+					f"for voice_id in {node.in0._variable}.voices:",
+					f"	{node.output._variable}.voices[voice_id] = {node.in0._variable}.voices.get(voice_id, _SILENCE) {op} {node.in1}",
 				]
 			)
 		else:
@@ -242,9 +242,9 @@ def numpy_mix(
 	init_code.append(f"{node.output._variable} = Signal()")
 
 	if isinstance(node.in0, Outlet):
-		process_code.append(f"{in0_voices} = set({node.in0._variable}.data)")
+		process_code.append(f"{in0_voices} = set({node.in0._variable}.voices)")
 	if isinstance(node.in1, Outlet):
-		process_code.append(f"{in1_voices} = set({node.in1._variable}.data)")
+		process_code.append(f"{in1_voices} = set({node.in1._variable}.voices)")
 
 	if isinstance(node.in0, Outlet) and isinstance(node.in1, Outlet):
 		process_code.append(f"for voice_id in {in0_voices}.intersection({in1_voices}):")
@@ -254,24 +254,24 @@ def numpy_mix(
 		process_code.append(f"for voice_id in {in1_voices}:")
 	else:
 		process_code.append("for voice_id in [0]:")
-	process_code.append(f"	{node.output._variable}.data[voice_id] = (")
+	process_code.append(f"	{node.output._variable}.voices[voice_id] = (")
 
 	if isinstance(node.fac, (int, float)):
 		fac = (max(min(node.fac, 1), -1) + 1) / 2
 	elif isinstance(node.fac, Outlet):
-		fac = f"{node.fac._variable}.data[voice_id]"
+		fac = f"{node.fac._variable}.voices[voice_id]"
 	else:
 		unsupported(node)
 
 	if isinstance(node.in0, Outlet):
-		process_code.append(f"		{node.in0._variable}.data[voice_id] * (1-{fac}) +")
+		process_code.append(f"		{node.in0._variable}.voices[voice_id] * (1-{fac}) +")
 	elif isinstance(node.in0, (int, float)):
 		process_code.append(f"		{node.in0} * (1-{fac}) +")
 	else:
 		unsupported(node)
 
 	if isinstance(node.in1, Outlet):
-		process_code.append(f"		{node.in1._variable}.data[voice_id] * {fac}")
+		process_code.append(f"		{node.in1._variable}.voices[voice_id] * {fac}")
 	elif isinstance(node.in0, (int, float)):
 		process_code.append(f"		{node.in1} * {fac}")
 	else:
@@ -281,15 +281,15 @@ def numpy_mix(
 
 	# Remove voices that are extinct
 	if isinstance(node.in0, Outlet) and isinstance(node.in1, Outlet):
-		process_code.append(f"for voice_id in set({node.output._variable}.data) - {in0_voices} - {in1_voices}:")
+		process_code.append(f"for voice_id in set({node.output._variable}.voices) - {in0_voices} - {in1_voices}:")
 	elif isinstance(node.in0, Outlet):
-		process_code.append(f"for voice_id in set({node.output._variable}.data) - {in0_voices}:")
+		process_code.append(f"for voice_id in set({node.output._variable}.voices) - {in0_voices}:")
 	elif isinstance(node.in1, Outlet):
-		process_code.append(f"for voice_id in set({node.output._variable}.data) - {in1_voices}:")
+		process_code.append(f"for voice_id in set({node.output._variable}.voices) - {in1_voices}:")
 	else:
 		# lol code
 		process_code.append("if 0:")
-	process_code.append(f"	{node.output._variable}.data.pop(voice_id)")
+	process_code.append(f"	{node.output._variable}.voices.pop(voice_id)")
 
 
 def numpy_slew(
@@ -340,25 +340,25 @@ def numpy_trigger(
 			stop = create_variable()
 			init_code.append(f"{stop} = np.zeros({node_context.frame_count}) + {node.stop}")
 
-		process_code.append(f"for voice_id, voice in {node.value._variable}.data.items():")
-		process_code.append(f"	if voice_id not in {node.output._variable}.data:")
-		process_code.append(f"		{node.output._variable}.data[voice_id] = np.zeros({node_context.frame_count})")
+		process_code.append(f"for voice_id, voice in {node.value._variable}.voices.items():")
+		process_code.append(f"	if voice_id not in {node.output._variable}.voices:")
+		process_code.append(f"		{node.output._variable}.voices[voice_id] = np.zeros({node_context.frame_count})")
 		process_code.append(f"	{current_value}[voice_id] = {method}(")
 		process_code.append(f"		{current_value}[voice_id],")
 		process_code.append("		voice,")
-		process_code.append(f"		{node.output._variable}.data[voice_id],")
+		process_code.append(f"		{node.output._variable}.voices[voice_id],")
 
 		if isinstance(node.start, (int, float)):
 			process_code.append(f"		{start},")
 		elif isinstance(node.start, Outlet):
-			process_code.append(f"		{node.start._variable}.data[voice_id],")
+			process_code.append(f"		{node.start._variable}.voices[voice_id],")
 		else:
 			unsupported(node)
 
 		if isinstance(node.stop, (int, float)):
 			process_code.append(f"		{stop},")
 		elif isinstance(node.stop, Outlet):
-			process_code.append(f"		{node.stop._variable}.data[voice_id],")
+			process_code.append(f"		{node.stop._variable}.voices[voice_id],")
 		else:
 			unsupported(node)
 
@@ -367,8 +367,8 @@ def numpy_trigger(
 		# Remove voices that has disappeared
 		process_code.extend(
 			[
-				f"for voice_id in set({node.output._variable}.data) - set({node.value._variable}.data):",
-				f"	{node.output._variable}.data.pop(voice_id)",
+				f"for voice_id in set({node.output._variable}.voices) - set({node.value._variable}.voices):",
+				f"	{node.output._variable}.voices.pop(voice_id)",
 			]
 		)
 	else:
@@ -385,8 +385,8 @@ def numpy_clip(
 
 	if isinstance(node.value, Outlet):
 		if isinstance(node.minimum, (int, float)) and isinstance(node.maximum, (int, float)):
-			process_code.append(f"for voice_id, voice in {node.value._variable}.data.items():")
-			process_code.append(f"	{node.output._variable}.data[voice_id] = np.clip(voice, {node.minimum}, {node.maximum})")
+			process_code.append(f"for voice_id, voice in {node.value._variable}.voices.items():")
+			process_code.append(f"	{node.output._variable}.voices[voice_id] = np.clip(voice, {node.minimum}, {node.maximum})")
 		else:
 			unsupported(node)
 	else:
@@ -395,8 +395,8 @@ def numpy_clip(
 	# Remove voices that has disappeared
 	process_code.extend(
 		[
-			f"for voice_id in set({node.output._variable}.data) - set({node.value._variable}.data):",
-			f"	{node.output._variable}.data.pop(voice_id)",
+			f"for voice_id in set({node.output._variable}.voices) - set({node.value._variable}.voices):",
+			f"	{node.output._variable}.voices.pop(voice_id)",
 		]
 	)
 
@@ -445,7 +445,7 @@ def numpy_audiofile(
 
 		# If we are done playing, clear all output voices
 		process_code.append(f"if {playback_position}+1 >= {audio_sample_count}:")
-		process_code.append(f"	{node.output._variable}.data.clear()")
+		process_code.append(f"	{node.output._variable}.voices.clear()")
 		process_code.append("else:")
 		process_code.append("	pass")
 
@@ -453,16 +453,16 @@ def numpy_audiofile(
 		# XXX Maybe we could do this more effective using numpy directly...?
 		for channel_index in node.channel_paths:
 			process_code.append(
-				f"	{node.output._variable}.data[{channel_index}] = "
+				f"	{node.output._variable}.voices[{channel_index}] = "
 				f"{audio_data}[{channel_index}][{playback_position}:{playback_position}+{node_context.frame_count}]"
 			)
 
 			# When at the end of the audio signal, pad with silence
 			process_code.extend(
 				[
-					f"	if len({node.output._variable}.data[{channel_index}]) != {node_context.frame_count}:",
-					f"		{node.output._variable}.data[{channel_index}] = "
-					f"np.pad({node.output._variable}.data[{channel_index}], pad_width=(0,{node_context.frame_count}-len({node.output._variable}.data[{channel_index}])))",
+					f"	if len({node.output._variable}.voices[{channel_index}]) != {node_context.frame_count}:",
+					f"		{node.output._variable}.voices[{channel_index}] = "
+					f"np.pad({node.output._variable}.voices[{channel_index}], pad_width=(0,{node_context.frame_count}-len({node.output._variable}.voices[{channel_index}])))",
 				]
 			)
 
@@ -508,7 +508,7 @@ def numpy_oscilloscope(
 		if isinstance(node.time_div, (int, float)):
 			# Look for new voices and create buffers for them
 			buffer_size = int(node_context.sample_rate * max(1E-4, min(1, node.time_div)))
-			process_code.append(f"for voice_id in set({node.value._variable}.data) - set({buffer}):")
+			process_code.append(f"for voice_id in set({node.value._variable}.voices) - set({buffer}):")
 			process_code.append(f"	{buffer}[voice_id] = np.zeros({buffer_size})")
 			process_code.append(f"	{trigger_at}[voice_id] = -1")
 			process_code.append(f"	{is_triggering}[voice_id] = False")
@@ -516,14 +516,14 @@ def numpy_oscilloscope(
 			unsupported(node)
 
 		# Remove dead voices
-		process_code.append(f"for voice_id in set({buffer}) - set({node.value._variable}.data):")
+		process_code.append(f"for voice_id in set({buffer}) - set({node.value._variable}.voices):")
 		process_code.append(f"	{buffer}.pop(voice_id)")
 
 		# Decide if we are to start triggering.
 		# Scans each voice's buffer for trigger point.
 		if isinstance(node.trigger, (int, float)):
 			# TODO merayen iterate each voice to find trigger points
-			process_code.append(f"for voice_id, voice in {node.value._variable}.data.items():")
+			process_code.append(f"for voice_id, voice in {node.value._variable}.voices.items():")
 			process_code.append(f"	if {is_triggering}: continue")
 			process_code.append(f"	{trigger_at}[voice_id] = np.argmax(voice >= {node.trigger})")
 			# A very special case as argmax does not return -1 when not found
@@ -535,8 +535,8 @@ def numpy_oscilloscope(
 
 		if isinstance(node.time_div, (int, float)):
 			# Add samples to the buffer until it is full
-			process_code.append(f"if {samples_filled} < {buffer_size} and {node.value._variable}.data:")
-			process_code.append(f"	for voice_id, voice in {node.value._variable}.data.items():")
+			process_code.append(f"if {samples_filled} < {buffer_size} and {node.value._variable}.voices:")
+			process_code.append(f"	for voice_id, voice in {node.value._variable}.voices.items():")
 			# TODO merayen implement listening for the trigger_at here
 			process_code.append(
 				f"		{buffer}[voice_id]["
@@ -555,7 +555,7 @@ def numpy_oscilloscope(
 			process_code.append(f"	{last_update} = time.time()")
 			process_code.append(f"	{is_triggering} = False")
 			process_code.append(
-				"	" + emit_data(node, f"	{{'plot_data': {{voice_id: data.tolist() for voice_id, data in {buffer}.items()}} }}")
+				"	" + emit_data(node, f"	{{'plot_data': {{voice_id: voices.tolist() for voice_id, voices in {buffer}.items()}} }}")
 			)
 			process_code.append(f"	{samples_filled} = 0")
 		else:
@@ -575,7 +575,7 @@ def numpy_out(node_context: NodeContext, node: out, init_code: list[str], proces
 		process_code.extend(
 			[
 				f"output['{node.name}'] = Signal(",
-				f"	data=np.zeros({node_context.frame_count}, dtype='float32') + {node.input}",
+				f"	voices=np.zeros({node_context.frame_count}, dtype='float32') + {node.input}",
 				")",
 			]
 		)
@@ -614,7 +614,7 @@ def compile_to_numpy(
 		"	return voice_identifier",
 		"@dataclass",
 		"class Signal:",
-		"	data: dict = field(default_factory=lambda:{})",  # TODO merayen rename data to voices?
+		"	voices: dict = field(default_factory=lambda:{})",
 		"	channel_map: dict = field(default_factory=lambda:{})",
 		"random = np.random.default_rng()",
 	]
@@ -726,12 +726,12 @@ def test_sine_node() -> None:
 def test_math_nodes() -> None:
 	import numpy as np
 
-	assert np.all(run_code("out(add(0,1) + 5 + add(2,0) / add(4,0) * 2)")["unnamed_0"].data[0] == 1 + 5 + 2 / 4 * 2)
+	assert np.all(run_code("out(add(0,1) + 5 + add(2,0) / add(4,0) * 2)")["unnamed_0"].voices[0] == 1 + 5 + 2 / 4 * 2)
 
 
 def test_sub_node() -> None:
 	import numpy as np
-	r = run_code("out(sub(20,5.0))")["unnamed_0"].data[0]
+	r = run_code("out(sub(20,5.0))")["unnamed_0"].voices[0]
 	assert np.all(r == 15)
 	run_code("out(sine(440) + 5)")
 	run_code("out(sub(in0=5, in1=sine(440)))")
@@ -743,7 +743,7 @@ def test_sub_node() -> None:
 def test_out_node() -> None:
 	import numpy as np
 
-	assert np.all(run_code("out(5*5)")["unnamed_0"].data == 25)
+	assert np.all(run_code("out(5*5)")["unnamed_0"].voices == 25)
 
 
 def run_code(code: str, frame_count=10, sample_rate=48000) -> Any:

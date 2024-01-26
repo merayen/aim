@@ -20,7 +20,7 @@ def callback(outdata, frames, time, status):
 
 	output_channels = {0: np.zeros(frame_count, dtype='float32'), 1: np.zeros(frame_count, dtype='float32')}
 
-	if not any(1 for out in output for voice_id in out.data):
+	if not any(1 for out in output for voice_id in out.voices):
 		assert np.all(_SILENCE == 0.0)
 
 		outdata[:,0] = _SILENCE
@@ -29,7 +29,7 @@ def callback(outdata, frames, time, status):
 
 	for out in output:
 		if isinstance(out, Signal):
-			for voice_id, voice in out.data.items():
+			for voice_id, voice in out.voices.items():
 
 				# TODO merayen read channel_map instead of using voice_id directly as channel_index
 				output_channels[voice_id % CHANNEL_COUNT] += voice * .1
