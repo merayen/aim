@@ -47,9 +47,9 @@ def _oscillator_clock(
 		# TODO merayen remove voices that disappears on the input
 		process_code.extend(
 			[
-				f"for voice_id, data in {node.frequency._variable}.voices.items():",
+				f"for voice_id, voice in {node.frequency._variable}.voices.items():",
 				f"	{clock_array} = {clock}[voice_id] +"
-				f"	np.cumsum(_ONES * (data / {node_context.sample_rate}))",
+				f"	np.cumsum(_ONES * (voice / {node_context.sample_rate}))",
 				f"	{clock}[voice_id] = {clock_array}[-1] % 1",
 				f"	{node.output._variable}.voices[voice_id] = {func}",
 			]
@@ -60,7 +60,7 @@ def _oscillator_clock(
 			[
 				f"for voice_id in set({node.output._variable}.voices) - set({node.frequency._variable}.voices):",
 				f"	{clock}.pop(voice_id)",
-				f"	{node.output._variable}.data.pop(voice_id)",
+				f"	{node.output._variable}.voices.pop(voice_id)",
 			]
 		)
 	else:
