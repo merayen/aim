@@ -686,14 +686,14 @@ def emit_data(node: Node, code: str) -> str:
 	return f"print(json.dumps({{'node_id': {id(node)}, 'name': '{node.__class__.__name__}', 'data': {code}}}))"
 
 
-def debug_print(node: Node, process_code: list[str], code: str):
+def debug_print(node: Node, code: str):
 	"""
 	Output data straight to stdout
 
 	Only meant for when developing nodes, not normal usage.
 	"""
 	# TODO merayen probably only do this when "aim --debug"
-	process_code.append(f"print(json.dumps({{'node': '{id(node)}', 'name': '{node.__class__.__name__}', 'debug': True, 'data': {code}}}))")
+	return f"print(json.dumps({{'node': '{id(node)}', 'name': '{node.__class__.__name__}', 'debug': True, 'data': {code}}}))"
 
 
 def unsupported(node: Node):

@@ -47,21 +47,20 @@ class CompileAndRun:
 		with subprocess.Popen(["python3", ".numpy_program.py"], stdout=subprocess.PIPE, universal_newlines=True) as process:
 			try:
 				while self._running and process.poll() is None:
+					# XXX This should probably have some timeout, in case underlaying program halts or goes
+					# into an endless loop.
 					line = process.stdout.readline()
 					try:
 						node_data = json.loads(line)
+					except json.decoder.JSONDecodeError:
+						print(f"Program stdout is not json. Please use debug_print() instead.")
+					else:
 						if node_data == {"status": 0}:
-							# Sent for every frame processed.
-							# This unblocks readline() so that we can yield to the caller.
 							pass
 						elif node_data.get("debug"):  # Print to stdout
 							print(f"DEBUG: Node {node_data['name']} says: {node_data['data']}")
 						else:
 							self._messages_to_listeners.put(node_data)
-							#self._listeners[node_data["node_id"]].receive(**node_data["data"])
-					except json.decoder.JSONDecodeError:
-						print("Invalid JSON data from created program: {}")
-						break
 
 			except KeyboardInterrupt:
 				pass
