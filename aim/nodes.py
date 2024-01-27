@@ -258,6 +258,8 @@ class noise(Node):
 	# Input is only used for voicing. No data read.
 	voices: Any = None
 
+	output = Outlet(DataType.SIGNAL)
+
 
 @node
 class saw(Node):
