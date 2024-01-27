@@ -595,6 +595,7 @@ def compile_to_numpy(
 	frame_count: int = 512,
 	sample_rate: int = 48000,
 ) -> str:
+	assert isinstance(compilation_context, CompilationContext)
 	# Start backwards and create dependency graph
 	init_code = []
 	process_code = []
@@ -701,7 +702,8 @@ def unsupported(node: Node):
 
 
 def test_sine_node() -> None:
-	from aim.nodes import load, OutNode
+	from aim.nodes import load, OutNode, build_node_graph, execution_order
+
 	for x in (
 		"out(sine())",
 		"out(sine().output)",
@@ -715,7 +717,10 @@ def test_sine_node() -> None:
 		assert outlet.node.frequency == 440
 
 		from aim.numpy_backend import compile_to_numpy
-		code: str = compile_to_numpy(context, sample_rate=10, frame_count=10)
+		graph, node_ids = build_node_graph(context)
+		order = execution_order(graph)
+		compilation_context = CompilationContext(context, graph, node_ids, order)
+		code: str = compile_to_numpy(compilation_context, sample_rate=10, frame_count=10)
 
 		code += "\nresult = numpy_process()"
 
@@ -726,31 +731,34 @@ def test_sine_node() -> None:
 def test_math_nodes() -> None:
 	import numpy as np
 
-	assert np.all(run_code("out(add(0,1) + 5 + add(2,0) / add(4,0) * 2)")["unnamed_0"].voices[0] == 1 + 5 + 2 / 4 * 2)
+	assert np.all(run_code_for_testing("out(add(0,1) + 5 + add(2,0) / add(4,0) * 2)")["unnamed_0"].voices[0] == 1 + 5 + 2 / 4 * 2)
 
 
 def test_sub_node() -> None:
 	import numpy as np
-	r = run_code("out(sub(20,5.0))")["unnamed_0"].voices[0]
+	r = run_code_for_testing("out(sub(20,5.0))")["unnamed_0"].voices[0]
 	assert np.all(r == 15)
-	run_code("out(sine(440) + 5)")
-	run_code("out(sub(in0=5, in1=sine(440)))")
-	run_code("out(sub(in0=sine(440), in1=5))")
-	run_code("out(sine(440) + sine(880))")
+	run_code_for_testing("out(sine(440) + 5)")
+	run_code_for_testing("out(sub(in0=5, in1=sine(440)))")
+	run_code_for_testing("out(sub(in0=sine(440), in1=5))")
+	run_code_for_testing("out(sine(440) + sine(880))")
 
 	# TODO merayen verify output of all
 
 def test_out_node() -> None:
 	import numpy as np
 
-	assert np.all(run_code("out(5*5)")["unnamed_0"].voices == 25)
+	assert np.all(run_code_for_testing("out(5*5)")["unnamed_0"].voices == 25)
 
 
-def run_code(code: str, frame_count=10, sample_rate=48000) -> Any:
-	from aim.nodes import load
+def run_code_for_testing(code: str, frame_count=10, sample_rate=48000) -> Any:
+	from aim.nodes import load, build_node_graph, execution_order
 
 	context: Context = load(code)
-	code: str = compile_to_numpy(context, frame_count=10, sample_rate=sample_rate)
+	graph, node_ids = build_node_graph(context)
+	order = execution_order(graph)
+	compilation_context = CompilationContext(context, graph, node_ids, order)
+	code: str = compile_to_numpy(compilation_context, frame_count=10, sample_rate=sample_rate)
 
 	code += "\nresult = numpy_process()"
 
