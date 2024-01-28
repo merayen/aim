@@ -399,8 +399,10 @@ class oscilloscope(OutNode):
 	value: Any = 0.0
 	time_div: Any = 0.01
 
-	# TODO merayen implement triggering separately for each voice
 	trigger: float = 0.1
+
+	# Value must be lower than this value until trigging is enabled, after a trigger
+	trigger_low: float = 0.0
 
 	# Passthrough. Allows doing "out(oscilloscope(sine()))"
 	output = Outlet(DataType.SIGNAL)
