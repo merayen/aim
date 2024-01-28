@@ -483,23 +483,22 @@ def numpy_oscilloscope(
 
 	buffer = create_variable()
 	samples_filled = create_variable()
-	is_triggering = create_variable()
 	trigger_at = create_variable()
-	last_update = create_variable()  # Last time we updated the oscilloscope view
+	waiting_period = create_variable()  # Last time we updated the oscilloscope view
 	pl = create_variable()
 
-	init_code.append(f"{buffer} = {{}}")
-	init_code.append(f"{samples_filled} = 0")
-	init_code.append(f"{is_triggering} = {{}}")
+	init_code.append(f"{waiting_period} = {{}}")  # How much we must wait before we search for trigger
 	init_code.append(f"{trigger_at} = {{}}")  # Where in the current buffer to start triggering
-	init_code.append(f"{last_update} = 0")
+	init_code.append(f"{samples_filled} = {{}}")  # How much of the buffer we have filled
+	init_code.append(f"{buffer} = {{}}")
 	init_code.append(f"import pylab as {pl}")
 	init_code.append(f"{pl}.ion()")
 
-	process_code.append(f"global {samples_filled}")
-	process_code.append(f"global {last_update}")
-	process_code.append(f"global {is_triggering}")
+	# XXX Are these really needed when accessing their members?
+	process_code.append(f"global {buffer}")
+	process_code.append(f"global {waiting_period}")
 	process_code.append(f"global {trigger_at}")
+	process_code.append(f"global {samples_filled}")
 
 	if isinstance(node.value, Outlet):
 		# We just forward the whole Outlet, as we are only forwarding the data
@@ -510,56 +509,63 @@ def numpy_oscilloscope(
 			buffer_size = int(node_context.sample_rate * max(1E-4, min(1, node.time_div)))
 			process_code.append(f"for voice_id in set({node.value._variable}.voices) - set({buffer}):")
 			process_code.append(f"	{buffer}[voice_id] = np.zeros({buffer_size})")
+			process_code.append(f"	{waiting_period}[voice_id] = 0")
 			process_code.append(f"	{trigger_at}[voice_id] = -1")
-			process_code.append(f"	{is_triggering}[voice_id] = False")
+			process_code.append(f"	{samples_filled}[voice_id] = 0")
 		else:
 			unsupported(node)
 
 		# Remove dead voices
 		process_code.append(f"for voice_id in set({buffer}) - set({node.value._variable}.voices):")
 		process_code.append(f"	{buffer}.pop(voice_id)")
+		process_code.append(f"	{waiting_period}.pop(voice_id)")
+		process_code.append(f"	{trigger_at}.pop(voice_id)")
+		process_code.append(f"	{samples_filled}.pop(voice_id)")
 
 		# Decide if we are to start triggering.
 		# Scans each voice's buffer for trigger point.
 		if isinstance(node.trigger, (int, float)):
-			# TODO merayen iterate each voice to find trigger points
 			process_code.append(f"for voice_id, voice in {node.value._variable}.voices.items():")
-			process_code.append(f"	if {is_triggering}: continue")
-			process_code.append(f"	{trigger_at}[voice_id] = np.argmax(voice >= {node.trigger})")
-			# A very special case as argmax does not return -1 when not found
-			process_code.append(f"	if {trigger_at}[voice_id] == 0 and voice[0] < {node.trigger}:")
-			# Nope, didn't find trigger point after all
-			process_code.append(f"		{trigger_at}[voice_id] = -1")
+			process_code.append(f"	if {trigger_at}[voice_id] > 0 or {waiting_period}[voice_id] > 0: continue")
+			trigger_index = create_variable()
+			process_code.append(f"	{trigger_index} = np.argmax(voice >= {node.trigger})")
+			process_code.append(f"	if {trigger_index} > 0 or voice[0] > {node.trigger}:")
+			process_code.append(f"		{trigger_at}[voice_id] = {trigger_index}")
 		else:
 			unsupported(node)
 
 		if isinstance(node.time_div, (int, float)):
 			# Add samples to the buffer until it is full
-			process_code.append(f"if {samples_filled} < {buffer_size} and {node.value._variable}.voices:")
-			process_code.append(f"	for voice_id, voice in {node.value._variable}.voices.items():")
+			process_code.append(f"for voice_id, voice in {node.value._variable}.voices.items():")
+			process_code.append(f"	if {samples_filled}[voice_id] < {buffer_size} and {trigger_at}[voice_id] < {node_context.frame_count}:")
 			# TODO merayen implement listening for the trigger_at here
 			process_code.append(
 				f"		{buffer}[voice_id]["
-				f"{samples_filled}:{samples_filled} + min({node_context.frame_count}, {buffer_size} - {samples_filled})] = "
-				f"voice[:min({node_context.frame_count}, {buffer_size} - {samples_filled})]"
+				f"{samples_filled}[voice_id]:{samples_filled}[voice_id] + min({node_context.frame_count}, {buffer_size} - {samples_filled}[voice_id])] = "
+				f"voice[:min({node_context.frame_count}, {buffer_size} - {samples_filled}[voice_id])]"
 			)
-
 			# Update the counter for samples sampled
-			process_code.append(f"	{samples_filled} += {node_context.frame_count}")
+			process_code.append(f"		{samples_filled}[voice_id] += {node_context.frame_count} - max(0, {trigger_at}[voice_id])")
 		else:
 			unsupported(node)
 
 		# Check if we have enough samples and if it is time to update oscilloscope view
 		if isinstance(node.time_div, (int, float)):
-			process_code.append(f"if {samples_filled} >= {buffer_size} and {last_update} + 0.05 < time.time():")
-			process_code.append(f"	{last_update} = time.time()")
-			process_code.append(f"	{is_triggering} = False")
+			process_code.append(f"for voice_id, samples in {buffer}.items():")
+			process_code.append(f"	if {samples_filled}[voice_id] < {buffer_size}: continue")
 			process_code.append(
-				"	" + emit_data(node, f"	{{'plot_data': {{voice_id: voices.tolist() for voice_id, voices in {buffer}.items()}} }}")
+				"	" + emit_data(node, f"{{'voice_id': voice_id, 'samples': samples.tolist() }}")
 			)
-			process_code.append(f"	{samples_filled} = 0")
+			process_code.append(f"	{samples_filled}[voice_id] = 0")
+			# TODO merayen calculate 0.1s into the future minus last trigger
+			process_code.append(f"	{waiting_period}[voice_id] = {node_context.frame_count * 10}")
 		else:
 			unsupported(node)
+
+		# Update counters
+		process_code.append(f"for voice_id in {node.value._variable}.voices:")
+		process_code.append(f"	{trigger_at}[voice_id] -= {node_context.frame_count}")
+		process_code.append(f"	{waiting_period}[voice_id] -= {node_context.frame_count}")
 
 	else:
 		unsupported(node)
