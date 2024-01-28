@@ -43,26 +43,21 @@ class oscilloscope_listener(Listener):
 
 		pl.show(block=False)
 
-	def receive(self, plot_data: Optional[list[int]]):
+	def receive(self, voice_id: Optional[int], samples: Optional[list[float]]):
 		if not pl.fignum_exists(self.fig.number):
+			self.lines = None
 			return  # User has closed the window
 
-		if plot_data is not None:
-			if len(plot_data) != self.lines:
-				self.axs.clear()
-				self.lines = {}
+		if samples is not None:
+			assert voice_id is not None
 
-			for voice_id, voice in plot_data.items():
-				if voice_id not in self.lines:
-					self.lines[voice_id] = self.axs.plot(voice, antialiased=False)
-				else:
-					self.lines[voice_id].set_ydata(voice)
-
-			# Remove non-existent voices
-			for voice_id in (x for x in self.lines if x not in self.lines):
+			if voice_id in self.lines and len(samples) == 0:
 				self.axs.lines.pop(self.axs.lines.index(self.lines[voice_id]))
 				self.lines.pop(voice_id)
-				# TODO merayen remove plot too?
+			elif voice_id not in self.lines:
+				self.lines[voice_id] = self.axs.plot(samples, antialiased=False)[0]
+			else:
+				self.lines[voice_id].set_ydata(samples)
 
 			self.fig.canvas.draw()
 			self.fig.canvas.flush_events()
