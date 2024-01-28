@@ -49,21 +49,27 @@ class CompileAndRun:
 				while self._running and process.poll() is None:
 					# XXX This should probably have some timeout, in case underlaying program halts or goes
 					# into an endless loop.
-					line = process.stdout.readline()
+					line = process.stdout.readline().strip()
 					try:
 						node_data = json.loads(line)
+						if not isinstance(node_data, dict):
+							print(f"Invalid output on program stdout: {line!r}")
+							break
 					except json.decoder.JSONDecodeError:
-						print(f"Program stdout is not json. Please use debug_print() instead.")
+						print(f"Invalid output on program stdout: {line!r}")
+						break
 					else:
 						if node_data == {"status": 0}:
 							pass
 						elif node_data.get("debug"):  # Print to stdout
-							print(f"DEBUG: Node {node_data['name']} says: {node_data['data']}")
+							print(f"DEBUG:{node_data['node_id']}:{node_data['name']}: {node_data['data']}")
 						else:
 							self._messages_to_listeners.put(node_data)
 
 			except KeyboardInterrupt:
 				pass
+
+			self._running = False
 
 			process.kill()
 
@@ -78,6 +84,10 @@ class CompileAndRun:
 		return result
 
 	def mainloop_mainthread(self):
-		while 1:  # Until ctrl-c
-			message = self._messages_to_listeners.get()
+		while self._running:  # Or until ctrl-c
+			try:
+				message = self._messages_to_listeners.get(timeout=0.1)
+			except queue.Empty:
+				continue
+
 			self._listeners[message["node_id"]].receive(**message["data"])
