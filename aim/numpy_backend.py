@@ -479,7 +479,7 @@ def numpy_oscilloscope(
 	init_code: list[str],
 	process_code: list[str],
 ) -> None:
-	# TODO merayen Implement triggering. Probably a trigger that starts individually per voice
+	fps = 30
 
 	buffer = create_variable()
 	samples_filled = create_variable()
@@ -555,7 +555,7 @@ def numpy_oscilloscope(
 			)
 			process_code.append(f"	{samples_filled}[voice_id] = 0")
 			# TODO merayen calculate 0.1s into the future minus last trigger
-			process_code.append(f"	{waiting_period}[voice_id] = {node_context.frame_count * 10}")
+			process_code.append(f"	{waiting_period}[voice_id] = {round(node_context.sample_rate * (1/fps))}")
 		else:
 			unsupported(node)
 
