@@ -397,7 +397,7 @@ class use(Node):
 @node
 class oscilloscope(OutNode):
 	value: Any = 0.0
-	time_div: Any = 0.1
+	time_div: Any = 0.01
 
 	# TODO merayen implement triggering separately for each voice
 	trigger: float = 0.1

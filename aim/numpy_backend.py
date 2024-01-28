@@ -494,12 +494,6 @@ def numpy_oscilloscope(
 	init_code.append(f"import pylab as {pl}")
 	init_code.append(f"{pl}.ion()")
 
-	# XXX Are these really needed when accessing their members?
-	process_code.append(f"global {buffer}")
-	process_code.append(f"global {waiting_period}")
-	process_code.append(f"global {trigger_at}")
-	process_code.append(f"global {samples_filled}")
-
 	if isinstance(node.value, Outlet):
 		# We just forward the whole Outlet, as we are only forwarding the data
 		init_code.append(f"{node.output._variable} = {node.value._variable}")
@@ -521,6 +515,7 @@ def numpy_oscilloscope(
 		process_code.append(f"	{waiting_period}.pop(voice_id)")
 		process_code.append(f"	{trigger_at}.pop(voice_id)")
 		process_code.append(f"	{samples_filled}.pop(voice_id)")
+		process_code.append("	" + emit_data(node, "{'voice_id': voice_id, 'samples': []}"))
 
 		# Decide if we are to start triggering.
 		# Scans each voice's buffer for trigger point.
@@ -528,8 +523,9 @@ def numpy_oscilloscope(
 			process_code.append(f"for voice_id, voice in {node.value._variable}.voices.items():")
 			process_code.append(f"	if {trigger_at}[voice_id] > 0 or {waiting_period}[voice_id] > 0: continue")
 			trigger_index = create_variable()
+			# Find the first value that is equal or more than the trigger value
 			process_code.append(f"	{trigger_index} = np.argmax(voice >= {node.trigger})")
-			process_code.append(f"	if {trigger_index} > 0 or voice[0] > {node.trigger}:")
+			process_code.append(f"	if {trigger_index} > 0 or voice[0] >= {node.trigger}:")
 			process_code.append(f"		{trigger_at}[voice_id] = {trigger_index}")
 		else:
 			unsupported(node)
@@ -537,15 +533,16 @@ def numpy_oscilloscope(
 		if isinstance(node.time_div, (int, float)):
 			# Add samples to the buffer until it is full
 			process_code.append(f"for voice_id, voice in {node.value._variable}.voices.items():")
-			process_code.append(f"	if {samples_filled}[voice_id] < {buffer_size} and {trigger_at}[voice_id] < {node_context.frame_count}:")
-			# TODO merayen implement listening for the trigger_at here
+			process_code.append(f"	if {trigger_at}[voice_id] > 0 or {waiting_period}[voice_id] > 0 or {samples_filled}[voice_id] >= {buffer_size}: continue")
+			to_fill = create_variable()
+			process_code.append(f"	{to_fill} = min({node_context.frame_count}, {buffer_size} - {samples_filled}[voice_id])")
 			process_code.append(
-				f"		{buffer}[voice_id]["
-				f"{samples_filled}[voice_id]:{samples_filled}[voice_id] + min({node_context.frame_count}, {buffer_size} - {samples_filled}[voice_id])] = "
+				f"	{buffer}[voice_id]["
+				f"{samples_filled}[voice_id]:{samples_filled}[voice_id] + {to_fill}] = "
 				f"voice[:min({node_context.frame_count}, {buffer_size} - {samples_filled}[voice_id])]"
 			)
 			# Update the counter for samples sampled
-			process_code.append(f"		{samples_filled}[voice_id] += {node_context.frame_count} - max(0, {trigger_at}[voice_id])")
+			process_code.append(f"	{samples_filled}[voice_id] += {to_fill}")
 		else:
 			unsupported(node)
 
@@ -554,7 +551,7 @@ def numpy_oscilloscope(
 			process_code.append(f"for voice_id, samples in {buffer}.items():")
 			process_code.append(f"	if {samples_filled}[voice_id] < {buffer_size}: continue")
 			process_code.append(
-				"	" + emit_data(node, f"{{'voice_id': voice_id, 'samples': samples.tolist() }}")
+				"	" + emit_data(node, "{'voice_id': voice_id, 'samples': samples.tolist() }")
 			)
 			process_code.append(f"	{samples_filled}[voice_id] = 0")
 			# TODO merayen calculate 0.1s into the future minus last trigger
