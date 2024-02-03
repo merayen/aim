@@ -512,9 +512,9 @@ def numpy_oscilloscope(
 			process_code.append(f"for voice_id in set({node.value._variable}.voices) - set({buffer}):")
 			process_code.append(f"	{clock}[voice_id] = 0")
 			process_code.append(f"	{waiting_period}[voice_id] = 0")
-			process_code.append(f"	{trigger_high}[voice_id] = {2**63}")  # Far into the future
-			process_code.append(f"	{trigger_low}[voice_id] = {2**63}")  # Far into the future
-			process_code.append(f"	{samples_filled}[voice_id] = {2**63}")
+			process_code.append(f"	{trigger_high}[voice_id] = {2**63-1}")
+			process_code.append(f"	{trigger_low}[voice_id] = {2**63-1}")
+			process_code.append(f"	{samples_filled}[voice_id] = {2**63-1}")
 			process_code.append(f"	{buffer}[voice_id] = np.zeros({buffer_size})")
 		else:
 			unsupported(node)
@@ -540,15 +540,14 @@ def numpy_oscilloscope(
 			trigger_index = create_variable()
 
 			# Search for trigger_low value if not timed out or already found
-			process_code.append(f"	if {trigger_low}[voice_id] == {2**63}:")
+			process_code.append(f"	if {trigger_low}[voice_id] == {2**63-1}:")
 			process_code.append(f"		{trigger_index} = np.argmax(voice < {node.trigger_low})")
 			process_code.append(f"		if {trigger_index} > 0 or voice[0] < {node.trigger_low}:")
 			process_code.append(f"			{trigger_low}[voice_id] = {trigger_index} + {clock}[voice_id]")
 			process_code.append(f"		else: continue")  # Low not found, no reason to look for high below
 
 			# Search for trigger_high value if not timed out or already found
-			# TODO merayen needs to scan after trigger_low, not before
-			process_code.append(f"	if {trigger_low}[voice_id] != {2**63} and {trigger_high}[voice_id] == {2**63}:")
+			process_code.append(f"	if {trigger_low}[voice_id] != {2**63-1} and {trigger_high}[voice_id] == {2**63-1}:")
 			trigger_high_offset = create_variable()
 			process_code.append(f"		{trigger_high_offset} = max(0, {trigger_low}[voice_id] - {clock}[voice_id]) if {trigger_low}[voice_id] < {node_context.frame_count} + {clock}[voice_id] else 0")
 			process_code.append(f"		assert 0 <= {trigger_high_offset} < {node_context.frame_count}, {trigger_high_offset}")
@@ -565,7 +564,7 @@ def numpy_oscilloscope(
 			process_code.append(f"for voice_id, voice in {node.value._variable}.voices.items():")
 
 			process_code.append(
-				f"	if {trigger_high}[voice_id] == {2**63}: continue"
+				f"	if {trigger_high}[voice_id] == {2**63-1}: continue"
 			)
 
 			read_offset = create_variable()
@@ -598,8 +597,8 @@ def numpy_oscilloscope(
 			process_code.append(f"	{samples_filled}[voice_id] = 0")
 			process_code.append(f"	{clock}[voice_id] = 0")
 			process_code.append(f"	{waiting_period}[voice_id] = {clock}[voice_id] + {round(node_context.sample_rate * (1/fps) - buffer_size)}")
-			process_code.append(f"	{trigger_high}[voice_id] = {2**63}")
-			process_code.append(f"	{trigger_low}[voice_id] = {2**63}")
+			process_code.append(f"	{trigger_high}[voice_id] = {2**63-1}")
+			process_code.append(f"	{trigger_low}[voice_id] = {2**63-1}")
 		else:
 			unsupported(node)
 
