@@ -565,11 +565,7 @@ def numpy_oscilloscope(
 			process_code.append(f"for voice_id, voice in {node.value._variable}.voices.items():")
 
 			process_code.append(
-				"	if "
-				f"{trigger_high}[voice_id] == {2**63} "
-				f"or {trigger_low}[voice_id] == {2**63} "
-				f"or {samples_filled}[voice_id] >= {buffer_size}"
-				": continue"
+				f"	if {trigger_high}[voice_id] == {2**63}: continue"
 			)
 
 			read_offset = create_variable()
