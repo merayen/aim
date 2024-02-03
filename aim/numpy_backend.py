@@ -479,7 +479,7 @@ def numpy_oscilloscope(
 	init_code: list[str],
 	process_code: list[str],
 ) -> None:
-	fps = 4
+	fps = 30
 
 	clock = create_variable()
 	buffer = create_variable()
@@ -525,6 +525,7 @@ def numpy_oscilloscope(
 		process_code.append(f"	{buffer}.pop(voice_id)")
 		process_code.append(f"	{waiting_period}.pop(voice_id)")
 		process_code.append(f"	{trigger_high}.pop(voice_id)")
+		process_code.append(f"	{trigger_low}.pop(voice_id)")
 		process_code.append(f"	{samples_filled}.pop(voice_id)")
 		process_code.append("	" + emit_data(node, "{'voice_id': voice_id, 'samples': []}"))
 
@@ -539,37 +540,50 @@ def numpy_oscilloscope(
 			trigger_index = create_variable()
 
 			# Search for trigger_low value if not timed out or already found
-			process_code.append(f"	if {trigger_low}[voice_id] > {clock}[voice_id]:")  # TODO merayen increase trigger_low elsewhere when triggered
-			process_code.append(f"		{trigger_index} = np.argmax({buffer}[voice_id] < {node.trigger_low})")
+			process_code.append(f"	if {trigger_low}[voice_id] == {2**63}:")
+			process_code.append(f"		{trigger_index} = np.argmax(voice < {node.trigger_low})")
 			process_code.append(f"		if {trigger_index} > 0 or voice[0] < {node.trigger_low}:")
 			process_code.append(f"			{trigger_low}[voice_id] = {trigger_index} + {clock}[voice_id]")
+			process_code.append(f"		else: continue")  # Low not found, no reason to look for high below
 
 			# Search for trigger_high value if not timed out or already found
-			process_code.append(f"	{trigger_index} = np.argmax(voice >= {node.trigger})")
-			process_code.append(f"	if {trigger_index} > 0 or voice[0] >= {node.trigger}:")
-			process_code.append(f"		{trigger_high}[voice_id] = {trigger_index} + {clock}[voice_id]")
+			process_code.append(f"	if {trigger_high}[voice_id] == {2**63}:")
+			process_code.append(f"		{trigger_index} = np.argmax(voice >= {node.trigger})")
+			process_code.append(f"		if {trigger_index} > 0 or voice[0] >= {node.trigger}:")
+			process_code.append(f"			{trigger_high}[voice_id] = {trigger_index} + {clock}[voice_id]")
+			process_code.append(f"			{samples_filled}[voice_id] = 0")
 		else:
 			unsupported(node)
 
 		if isinstance(node.time_div, (int, float)):
 			# Add samples to the buffer until it is full
 			process_code.append(f"for voice_id, voice in {node.value._variable}.voices.items():")
+
 			process_code.append(
 				"	if "
-				f"{trigger_high}[voice_id] >= {node_context.frame_count} + {clock}[voice_id] "
-				f"or {waiting_period}[voice_id] > {clock}[voice_id] "
-				f"or {trigger_low}[voice_id] >= {trigger_high}[voice_id] "
+				f"{trigger_high}[voice_id] == {2**63} "
+				f"or {trigger_low}[voice_id] == {2**63} "
 				f"or {samples_filled}[voice_id] >= {buffer_size}"
 				": continue"
 			)
-			to_fill = create_variable()
-			process_code.append(f"	{to_fill} = min({node_context.frame_count}, {buffer_size} - {samples_filled}[voice_id])")
+
+			read_offset = create_variable()
+			write_offset = create_variable()
+			size = create_variable()
+			write_stop = create_variable()
+			process_code.append(f"	{read_offset} = {trigger_high}[voice_id] - {clock}[voice_id] if {samples_filled}[voice_id] == 0 else 0")
+			process_code.append(f"	{size} = min({buffer_size} - {samples_filled}[voice_id], {node_context.frame_count} - {read_offset})")
+			process_code.append(f"	{write_offset} = {samples_filled}[voice_id]")
+			process_code.append(f"	{write_stop} = {samples_filled}[voice_id] + {size}")
+			process_code.append(f"	assert -1 < {size} <= {node_context.frame_count}, {size}")
+			process_code.append(f"	assert -1 < {write_offset} < {buffer_size}, {write_offset}")
+			process_code.append(f"	assert {write_stop} > -1, {write_stop}")
 			process_code.append(
-				f"	{buffer}[voice_id][{samples_filled}[voice_id]:{samples_filled}[voice_id] + {to_fill}] = voice[:{to_fill}]"
+				f"	{buffer}[voice_id][{write_offset}:{write_offset} + {size}] = voice[{read_offset}:{read_offset} + {size}]"
 			)
 
 			# Update the counter for samples sampled, which decides when to stop sampling
-			process_code.append(f"	{samples_filled}[voice_id] += {to_fill}")
+			process_code.append(f"	{samples_filled}[voice_id] += {size}")
 		else:
 			unsupported(node)
 
@@ -581,6 +595,7 @@ def numpy_oscilloscope(
 				"	" + emit_data(node, "{'voice_id': voice_id, 'samples': samples.tolist() }")
 			)
 			process_code.append(f"	{samples_filled}[voice_id] = 0")
+			process_code.append(f"	{clock}[voice_id] = 0")
 			process_code.append(f"	{waiting_period}[voice_id] = {clock}[voice_id] + {round(node_context.sample_rate * (1/fps) - buffer_size)}")
 			process_code.append(f"	{trigger_high}[voice_id] = {2**63}")
 			process_code.append(f"	{trigger_low}[voice_id] = {2**63}")
@@ -774,6 +789,7 @@ def test_sub_node() -> None:
 	run_code_for_testing("out(sine(440) + sine(880))")
 
 	# TODO merayen verify output of all
+
 
 def test_out_node() -> None:
 	import numpy as np
