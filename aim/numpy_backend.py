@@ -529,8 +529,8 @@ def numpy_oscilloscope(
 		process_code.append(f"	{samples_filled}.pop(voice_id)")
 		process_code.append("	" + emit_data(node, "{'voice_id': voice_id, 'samples': []}"))
 
-		# Scan for trigger points, high and low
-		# Scans each voice's buffer for trigger point.
+		# Scan for trigger points. First low point, then high point.
+		# Scans each voice's buffer for trigger points.
 		if isinstance(node.trigger, (int, float)):
 			process_code.append(f"for voice_id, voice in {node.value._variable}.voices.items():")
 
@@ -547,16 +547,20 @@ def numpy_oscilloscope(
 			process_code.append(f"		else: continue")  # Low not found, no reason to look for high below
 
 			# Search for trigger_high value if not timed out or already found
-			process_code.append(f"	if {trigger_high}[voice_id] == {2**63}:")
-			process_code.append(f"		{trigger_index} = np.argmax(voice >= {node.trigger})")
-			process_code.append(f"		if {trigger_index} > 0 or voice[0] >= {node.trigger}:")
-			process_code.append(f"			{trigger_high}[voice_id] = {trigger_index} + {clock}[voice_id]")
+			# TODO merayen needs to scan after trigger_low, not before
+			process_code.append(f"	if {trigger_low}[voice_id] != {2**63} and {trigger_high}[voice_id] == {2**63}:")
+			trigger_high_offset = create_variable()
+			process_code.append(f"		{trigger_high_offset} = {trigger_low}[voice_id] - {clock}[voice_id] if {trigger_low}[voice_id] < {node_context.frame_count} + {clock}[voice_id] else 0")
+			process_code.append(f"		{trigger_index} = np.argmax(voice[{trigger_high_offset}:] >= {node.trigger})")
+			process_code.append(f"		if {trigger_index} > 0 or voice[{trigger_high_offset}] >= {node.trigger}:")
+			process_code.append(f"			{trigger_high}[voice_id] = {trigger_index} + {clock}[voice_id] + {trigger_high_offset}")
 			process_code.append(f"			{samples_filled}[voice_id] = 0")
+			process_code.append(f"	assert {trigger_high}[voice_id] > {trigger_low}[voice_id], f'trigger_low={{{trigger_low}[voice_id]}} > trigger_high={{{trigger_high}[voice_id]}}'")
 		else:
 			unsupported(node)
 
 		if isinstance(node.time_div, (int, float)):
-			# Add samples to the buffer until it is full
+			# Add samples to the buffer until it is full. For each voice.
 			process_code.append(f"for voice_id, voice in {node.value._variable}.voices.items():")
 
 			process_code.append(
