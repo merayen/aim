@@ -35,7 +35,7 @@ def _oscillator_clock(
 			f"np.cumsum(_ONES * ({node.frequency} / {node_context.sample_rate}))"
 		)
 		process_code.append(f"{node.output._variable}.voices[0] = {func}")
-		process_code.append(f"{clock} = {clock_array}[-1]")
+		process_code.append(f"{clock} = {clock_array}[-1] % 1")
 
 	elif isinstance(node.frequency, Outlet):
 		func %= {'clock_array': clock_array, "voice_id": "voice_id"}
