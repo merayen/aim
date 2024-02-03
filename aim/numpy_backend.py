@@ -550,12 +550,13 @@ def numpy_oscilloscope(
 			# TODO merayen needs to scan after trigger_low, not before
 			process_code.append(f"	if {trigger_low}[voice_id] != {2**63} and {trigger_high}[voice_id] == {2**63}:")
 			trigger_high_offset = create_variable()
-			process_code.append(f"		{trigger_high_offset} = {trigger_low}[voice_id] - {clock}[voice_id] if {trigger_low}[voice_id] < {node_context.frame_count} + {clock}[voice_id] else 0")
+			process_code.append(f"		{trigger_high_offset} = max(0, {trigger_low}[voice_id] - {clock}[voice_id]) if {trigger_low}[voice_id] < {node_context.frame_count} + {clock}[voice_id] else 0")
+			process_code.append(f"		assert 0 <= {trigger_high_offset} < {node_context.frame_count}, {trigger_high_offset}")
 			process_code.append(f"		{trigger_index} = np.argmax(voice[{trigger_high_offset}:] >= {node.trigger})")
 			process_code.append(f"		if {trigger_index} > 0 or voice[{trigger_high_offset}] >= {node.trigger}:")
 			process_code.append(f"			{trigger_high}[voice_id] = {trigger_index} + {clock}[voice_id] + {trigger_high_offset}")
 			process_code.append(f"			{samples_filled}[voice_id] = 0")
-			process_code.append(f"	assert {trigger_high}[voice_id] > {trigger_low}[voice_id], f'trigger_low={{{trigger_low}[voice_id]}} > trigger_high={{{trigger_high}[voice_id]}}'")
+			process_code.append(f"	assert {trigger_high}[voice_id] >= {trigger_low}[voice_id], f'trigger_high={{{trigger_low}[voice_id]}} > trigger_high={{{trigger_high}[voice_id]}}'")
 		else:
 			unsupported(node)
 
@@ -575,7 +576,7 @@ def numpy_oscilloscope(
 			write_offset = create_variable()
 			size = create_variable()
 			write_stop = create_variable()
-			process_code.append(f"	{read_offset} = {trigger_high}[voice_id] - {clock}[voice_id] if {samples_filled}[voice_id] == 0 else 0")
+			process_code.append(f"	{read_offset} = max(0, {trigger_high}[voice_id] - {clock}[voice_id]) if {samples_filled}[voice_id] == 0 else 0")
 			process_code.append(f"	{size} = min({buffer_size} - {samples_filled}[voice_id], {node_context.frame_count} - {read_offset})")
 			process_code.append(f"	{write_offset} = {samples_filled}[voice_id]")
 			process_code.append(f"	{write_stop} = {samples_filled}[voice_id] + {size}")
