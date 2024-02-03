@@ -6,6 +6,9 @@ parser.add_argument("--path", nargs="?")
 sub_parser = parser.add_subparsers(help="Commands", dest="command")
 sub_parser.required = False
 
+sub_parser.add_parser("init")
+sub_parser.add_parser("run")
+
 opts = parser.parse_args()
 
 if not opts.command:
@@ -36,6 +39,10 @@ if opts.command == "run":
 			pass
 
 		compile_and_run.stop()
+
+elif opts.command == "init":
+	from aim.init_folder import init_folder
+	init_folder(".")
 
 # aim
 # Automatically runs the project in the current folder using the numpy backend
