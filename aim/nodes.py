@@ -334,12 +334,6 @@ class signal(Node):
 class poly(Node):
 	"""Create multiple voices
 
-	Typical use is:
-		poly(midi())
-
-	...which makes e.g each key pressed a separated voice, meaning it is possible to play multiple
-	tones at once.
-
 	By varying the "voices" input, more voices can be created.
 
 	Note that voices are only deallocated if the whole following chain marks the current voice as
