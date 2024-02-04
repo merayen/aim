@@ -401,8 +401,24 @@ def numpy_clip(
 	)
 
 
-def numpy_poly(node_context: NodeContext, node: out, init_code: list[str], process_code: list[str]) -> None:
-	pass
+def numpy_poly(
+	node_context: NodeContext,
+	node: out,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	if isinstance(node.max_voices, int):
+		pass
+	else:
+		unsupported(node)
+
+	if isinstance(node.input, (int, float)):
+		init_code.append(f"{node.output._variable} = Signal()")
+		if isinstance(node.voices, int):
+			init_code.append(f"for _ in range({node.voices}):")
+			init_code.append(f"	{node.output._variable}.voices[create_voice()] = _ONES + {node.input}")
+	else:
+		unsupported(node)
 
 
 def numpy_audiofile(
