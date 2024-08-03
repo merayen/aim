@@ -401,6 +401,22 @@ def numpy_clip(
 	)
 
 
+def numpy_score(
+	node_context: NodeContext,
+	node: out,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	init_code.append(f"{node.output._variable} = Midi()")
+
+	if node.score is None:
+		return
+	elif isinstance(node.score, str):
+		raise NotImplementedError("")  # TODO merayen implement
+	else:
+		unsupported(node)
+
+
 def numpy_poly(
 	node_context: NodeContext,
 	node: out,
@@ -678,6 +694,8 @@ def compile_to_numpy(
 		"class Signal:",
 		"	voices: dict = field(default_factory=lambda:{})",
 		"	channel_map: dict = field(default_factory=lambda:{})",
+		"class Midi:",
+		"	data: list[tuple[int, list[int]]]",
 		"random = np.random.default_rng()",
 	]
 

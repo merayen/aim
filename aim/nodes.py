@@ -331,6 +331,16 @@ class signal(Node):
 
 
 @node
+class score(Node):
+	"""
+	Midi score written as text
+	"""
+	score: Optional[str] = None
+
+	output = Outlet(DataType.MIDI)
+
+
+@node
 class poly(Node):
 	"""Create multiple voices
 
