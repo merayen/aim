@@ -6,7 +6,6 @@ E.g, an oscilloscope node that creates UI and reads plot data from the oscillosc
 Hardcoded to kyvi for now. Could also send outgoing node data on UDP and such, but we don't plan for
 that for now.
 """
-import pylab as pl
 from typing import Optional
 
 from aim.nodes import Node
