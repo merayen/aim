@@ -285,10 +285,10 @@ class trigger(Node):
 	value: Any = 0.0
 
 	# Equal or more than this value outputs 1.0 on the output
-	start: Any = 0.5
+	on: Any = 0.5
 
 	# Less than this value output 0.0 on the output
-	stop: Any = 0.5
+	off: Any = 0.5
 
 	# If connected, react on trigger from this source
 	trigger: Optional[Any] = None
@@ -341,7 +341,7 @@ class score(Node):
 
 
 @node
-class poly(Node):
+class unison(Node):
 	"""Create multiple voices
 
 	By varying the "voices" input, more voices can be created.
@@ -352,6 +352,17 @@ class poly(Node):
 	voices: int = 1  # For each key pressed
 	max_voices: int = 32  # Destroy old voices when this limit is hit
 
+	output = Outlet(DataType.SIGNAL)  # The format changes dynamically
+
+
+@node
+class delay(Node):
+	"""
+	Delays everything
+
+	When things come too soon, it is nice to have a delay.
+	"""
+	input: Any = None
 	output = Outlet(DataType.SIGNAL)  # The format changes dynamically
 
 

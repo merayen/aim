@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 from aim.nodes import (
 	Node, create_variable, Outlet, Context, DataType,
-	sine, out, CompilationContext,
+	delay, sine, out, CompilationContext,
 )
 from typing import Any
 
 
 @dataclass
 class NodeContext:
-	frame_count: int
+	frame_count: int  # Samples per buffer
 	sample_rate: int
 
 
@@ -332,13 +332,13 @@ def numpy_trigger(
 
 	if isinstance(node.value, Outlet):
 
-		if isinstance(node.start, (int, float)):
-			start = create_variable()
-			init_code.append(f"{start} = np.zeros({node_context.frame_count}) + {node.start}")
+		if isinstance(node.on, (int, float)):
+			on = create_variable()
+			init_code.append(f"{on} = np.zeros({node_context.frame_count}) + {node.on}")
 
-		if isinstance(node.stop, (int, float)):
-			stop = create_variable()
-			init_code.append(f"{stop} = np.zeros({node_context.frame_count}) + {node.stop}")
+		if isinstance(node.off, (int, float)):
+			off = create_variable()
+			init_code.append(f"{off} = np.zeros({node_context.frame_count}) + {node.off}")
 
 		process_code.append(f"for voice_id, voice in {node.value._variable}.voices.items():")
 		process_code.append(f"	if voice_id not in {node.output._variable}.voices:")
@@ -348,17 +348,17 @@ def numpy_trigger(
 		process_code.append("		voice,")
 		process_code.append(f"		{node.output._variable}.voices[voice_id],")
 
-		if isinstance(node.start, (int, float)):
-			process_code.append(f"		{start},")
-		elif isinstance(node.start, Outlet):
-			process_code.append(f"		{node.start._variable}.voices[voice_id],")
+		if isinstance(node.on, (int, float)):
+			process_code.append(f"		{on},")
+		elif isinstance(node.on, Outlet):
+			process_code.append(f"		{node.on._variable}.voices[voice_id],")
 		else:
 			unsupported(node)
 
-		if isinstance(node.stop, (int, float)):
-			process_code.append(f"		{stop},")
-		elif isinstance(node.stop, Outlet):
-			process_code.append(f"		{node.stop._variable}.voices[voice_id],")
+		if isinstance(node.off, (int, float)):
+			process_code.append(f"		{off},")
+		elif isinstance(node.off, Outlet):
+			process_code.append(f"		{node.off._variable}.voices[voice_id],")
 		else:
 			unsupported(node)
 
@@ -417,7 +417,7 @@ def numpy_score(
 		unsupported(node)
 
 
-def numpy_poly(
+def numpy_unison(
 	node_context: NodeContext,
 	node: out,
 	init_code: list[str],
@@ -433,6 +433,18 @@ def numpy_poly(
 		if isinstance(node.voices, int):
 			init_code.append(f"for _ in range({node.voices}):")
 			init_code.append(f"	{node.output._variable}.voices[create_voice()] = _ONES + {node.input}")
+	else:
+		unsupported(node)
+
+
+def numpy_delay(
+	node_context: NodeContext,
+	node: delay,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	if isinstance(node.time, float):
+		pass
 	else:
 		unsupported(node)
 
@@ -464,7 +476,6 @@ def numpy_audiofile(
 		# XXX Implement smart-buffering of audio files in the future
 		for i, (channel_index, channel_path) in enumerate(node.channel_paths.items()):
 			assert "'" not in channel_path
-
 
 			init_code.append(f"{audio_data}[{channel_index}] = np.fromfile('{channel_path}', dtype='float32')")
 

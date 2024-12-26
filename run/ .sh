@@ -1,1 +1,1 @@
-ruff --fix $1
+ruff check $VIM_FILE
