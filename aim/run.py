@@ -5,8 +5,9 @@ See ui.py for running the ui.
 """
 import json
 import os
-import subprocess
 import queue
+import subprocess
+import sys
 
 from aim.nodes import build_node_graph, execution_order, CompilationContext, Context
 from aim.numpy_backend import compile_to_numpy
@@ -44,7 +45,7 @@ class CompileAndRun:
 	def mainloop(self):
 		# Start a new python interpreter that executes the code
 		# TODO merayen maybe support a daemon that receives this code and executes it, and that allows for module loading and de-loading
-		with subprocess.Popen(["python3", ".numpy_program.py"], stdout=subprocess.PIPE, universal_newlines=True) as process:
+		with subprocess.Popen([sys.executable, ".numpy_program.py"], stdout=subprocess.PIPE, universal_newlines=True) as process:
 			try:
 				while self._running and process.poll() is None:
 					# XXX This should probably have some timeout, in case underlaying program halts or goes
