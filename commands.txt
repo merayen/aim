@@ -1,2 +1,7 @@
 python3 -m venv .venv
 .venv/bin/pip3 install sounddevice numpy numba matplotlib
+
+aseqdump -l
+aseqdump -p 32:0
+
+xxd -c 1 /dev/snd/midiC4D0

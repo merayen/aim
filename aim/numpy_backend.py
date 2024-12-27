@@ -67,6 +67,27 @@ def _oscillator_clock(
 		unsupported(node)
 
 
+def numpy_print(
+	node_context: NodeContext,
+	node: Node,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	if node.input.datatype == DataType.MIDI:
+		midi_event = create_variable()
+		process_code.append(f"for {midi_event} in {node.input._variable}.data:")
+		process_code.append("	" + debug_print(node, f"str({midi_event})"))
+	elif node.input.datatype == DataType.SIGNAL:
+		previous_voice_count = create_variable()
+		init_code.append(f"{previous_voice_count} = 0")
+		process_code.append(f"global {previous_voice_count}")
+		process_code.append(f"if {previous_voice_count} != len({node.input._variable}.voices):")
+		process_code.append(f"	{previous_voice_count} = len({node.input._variable}.voices)")
+		process_code.append("	" + debug_print(node, f'f"voices={previous_voice_count}"'))
+	else:
+		unsupported(node)
+
+
 def numpy_sine(
 	node_context: NodeContext,
 	node: sine,

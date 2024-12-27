@@ -5,8 +5,6 @@ from functools import cached_property
 from typing import Any, Optional
 
 import contextvars
-import json
-import os
 
 from aim import importing
 
@@ -185,6 +183,11 @@ class Outlet(Entity):
 
 
 @node
+class print(OutNode):
+	input: Any = None
+
+
+@node
 class midi(Node):
 	"""Read midi from connected device"""
 	device_name: Any = None
@@ -335,7 +338,7 @@ class score(Node):
 	"""
 	Midi score written as text
 	"""
-	score: Optional[str] = None
+	score: str | None = None
 
 	output = Outlet(DataType.MIDI)
 
