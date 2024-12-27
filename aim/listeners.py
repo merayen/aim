@@ -7,7 +7,7 @@ Hardcoded to kyvi for now. Could also send outgoing node data on UDP and such, b
 that for now.
 """
 from typing import Optional
-
+import pylab as pl
 from aim.nodes import Node
 
 
@@ -27,7 +27,6 @@ line_count = 10
 
 class oscilloscope_listener(Listener):
 	def setup(self):
-		import pylab as pl
 		self.fig, self.axs = pl.subplots(1, facecolor=(0.05, 0.05, 0.1))
 
 		self.axs.set_ylim(-1, 1)
