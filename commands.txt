@@ -1,2 +1,2 @@
 python3 -m venv .venv
-.venv/bin/pip3 install sounddevice numpy numba
+.venv/bin/pip3 install sounddevice numpy numba matplotlib
