@@ -67,6 +67,25 @@ def _oscillator_clock(
 		unsupported(node)
 
 
+def numpy_midi(
+	node_context: NodeContext,
+	node: Node,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	# TODO merayen probably needs to run in a separate thread, and send events on a queue...?
+	init_code.append(f"{node.midi._variable} = Midi()")
+
+	midi_linux_file = create_variable()
+	init_code.append("import os")  # TODO merayen importing should only happen once?
+	init_code.append(f'{midi_linux_file} = open("/dev/snd/midiC4D0", "rb")')
+	init_code.append(f"os.set_blocking({midi_linux_file}.fileno(), False)")
+
+	data = create_variable()
+	process_code.append(f"{data} = {midi_linux_file}.read()")
+	process_code.append(f"{node.midi._variable}.data = {data} and [(0, {data})] or []")
+
+
 def numpy_print(
 	node_context: NodeContext,
 	node: Node,
@@ -726,8 +745,9 @@ def compile_to_numpy(
 		"class Signal:",
 		"	voices: dict = field(default_factory=lambda:{})",
 		"	channel_map: dict = field(default_factory=lambda:{})",
+		"@dataclass",
 		"class Midi:",
-		"	data: list[tuple[int, list[int]]]",
+		"	data: list[tuple[int, bytes]] = field(default_factory=lambda:[])",
 		"random = np.random.default_rng()",
 	]
 
