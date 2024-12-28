@@ -74,16 +74,34 @@ def numpy_midi(
 	process_code: list[str],
 ) -> None:
 	# TODO merayen probably needs to run in a separate thread, and send events on a queue...?
-	init_code.append(f"{node.midi._variable} = Midi()")
+	voice_output = create_variable()
+	init_code.append(f"{voice_output} = create_voice()")
+	init_code.append(f"{node.midi._variable} = Midi(voices={{{voice_output}: []}})")
 
-	midi_linux_file = create_variable()
-	init_code.append("import os")  # TODO merayen importing should only happen once?
-	init_code.append(f'{midi_linux_file} = open("/dev/snd/midiC4D0", "rb")')
-	init_code.append(f"os.set_blocking({midi_linux_file}.fileno(), False)")
+	init_code.append("import queue")
+	init_code.append("import threading")
 
+	queue = create_variable()
+	init_code.append(f"{queue} = queue.Queue()")
+
+	# Create separate thread that only listens for midi data
+	midi_listener_func = create_variable()
+	init_code.append(f"def {midi_listener_func}():")
+	init_code.append(f'	stream = open("/dev/snd/midiC4D0", "rb")')
+	init_code.append(f"	while 1:")
+	init_code.append(f"		data = stream.read(1)")
+	init_code.append(f"		{queue}.put((time.time(), data))")
+	init_code.append(f"threading.Thread(target={midi_listener_func}).start()")
+
+	# Receive data from the thread above
 	data = create_variable()
-	process_code.append(f"{data} = {midi_linux_file}.read()")
-	process_code.append(f"{node.midi._variable}.data = {data} and [(0, {data})] or []")
+	process_code.append(f"{node.midi._variable}.voices[{voice_output}].clear()")
+	process_code.append(f"while 1:")
+	process_code.append(f"	try:")
+	process_code.append(f"		{data} = {queue}.get_nowait()")
+	process_code.append(f"		{node.midi._variable}.voices[{voice_output}].append((0, {data}[1]))")  # TODO merayen calculate better timing data
+	process_code.append(f"	except queue.Empty:")
+	process_code.append(f"		break")
 
 
 def numpy_print(
@@ -94,8 +112,9 @@ def numpy_print(
 ) -> None:
 	if node.input.datatype == DataType.MIDI:
 		midi_event = create_variable()
-		process_code.append(f"for {midi_event} in {node.input._variable}.data:")
-		process_code.append("	" + debug_print(node, f"str({midi_event})"))
+		process_code.append(f"for voice_id, voice in {node.input._variable}.voices.items():")
+		process_code.append(f"	for {midi_event} in voice:")
+		process_code.append("		" + debug_print(node, f'f"voice={{voice_id}}" + str({midi_event})'))
 	elif node.input.datatype == DataType.SIGNAL:
 		previous_voice_count = create_variable()
 		init_code.append(f"{previous_voice_count} = 0")
@@ -747,7 +766,7 @@ def compile_to_numpy(
 		"	channel_map: dict = field(default_factory=lambda:{})",
 		"@dataclass",
 		"class Midi:",
-		"	data: list[tuple[int, bytes]] = field(default_factory=lambda:[])",
+		"	voices: dict[int, list[tuple[int, bytes]]] = field(default_factory=lambda:{})",
 		"random = np.random.default_rng()",
 	]
 
