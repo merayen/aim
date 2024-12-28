@@ -42,18 +42,55 @@ def _oscillator_clock(
 		init_code.append(f"{clock} = defaultdict(lambda: 0.0)")
 		init_code.append(f"{node.output._variable} = Signal()")
 
-		# Note that we only respect voices on the frequency-input
-		# If e.g another input port has other voices, we just ignore them. This may or may not be wanted.
-		# TODO merayen remove voices that disappears on the input
-		process_code.extend(
-			[
-				f"for voice_id, voice in {node.frequency._variable}.voices.items():",
-				f"	{clock_array} = {clock}[voice_id] +"
-				f"	np.cumsum(_ONES * (voice / {node_context.sample_rate}))",
-				f"	{clock}[voice_id] = {clock_array}[-1] % 1",
-				f"	{node.output._variable}.voices[voice_id] = {func}",
-			]
-		)
+		if node.frequency.datatype == DataType.SIGNAL:
+			# Note that we only respect voices on the frequency-input
+			# If e.g another input port has other voices, we just ignore them. This may or may not be
+			# wanted.
+			# TODO merayen remove voices that disappears on the input
+			process_code.extend(
+				[
+					f"for voice_id, voice in {node.frequency._variable}.voices.items():",
+					f"	{clock_array} = {clock}[voice_id] +"
+					f"	np.cumsum(_ONES * (voice / {node_context.sample_rate}))",
+					f"	{clock}[voice_id] = {clock_array}[-1] % 1",  # Save position for next time
+					f"	{node.output._variable}.voices[voice_id] = {func}",
+				]
+			)
+
+		elif node.frequency.datatype == DataType.MIDI:
+			# XXX this code could be moved out and used by other nodes
+			midi_decoder_func = create_variable()
+			init_code.append(f"def {midi_decoder_func}(data):")
+			init_code.append("	for b in data:")
+
+			init_code.append(f"		if b & 128: {midi_decoder_func}.data = [b]")  # Command
+			init_code.append(f"		elif {midi_decoder_func}.data: {midi_decoder_func}.data.append(b)")  # Data
+
+			init_code.append(f"		if len({midi_decoder_func}.data) == 3:")  # Datas with 3 packets
+			init_code.append(f"			if {midi_decoder_func}.data[0] == 144:")  # Key down
+			init_code.append(f"				{midi_decoder_func}.frequency = 440 * 2**(({midi_decoder_func}.data[1] - 69) / 12)")
+			init_code.append(f"				{midi_decoder_func}.amplitude = {midi_decoder_func}.data[2] / 127")
+
+			init_code.append(f"			elif {midi_decoder_func}.data[0] == 128:")  # Key up
+			init_code.append(f"				{midi_decoder_func}.amplitude = 0")
+
+			init_code.append(f"{midi_decoder_func}.amplitude = 0")
+			init_code.append(f"{midi_decoder_func}.frequency = 0")
+			init_code.append(f"{midi_decoder_func}.data = None")
+
+			process_code.extend(
+				[
+					f"for voice_id, voice in {node.frequency._variable}.voices.items():",
+					 "	for frame, midi in voice:",
+					f"		{midi_decoder_func}(midi)",
+					f"	{clock_array} = {clock}[voice_id] +"
+					f"	np.cumsum(_ONES * ({midi_decoder_func}.frequency / {node_context.sample_rate}))",
+					f"	{clock}[voice_id] = {clock_array}[-1] % 1",  # Save position for next time
+					f"	{node.output._variable}.voices[voice_id] = ({func}) * {midi_decoder_func}.amplitude",
+				]
+			)
+		else:
+			unsupported(node)
 
 		# Remove voices that has disappeared
 		process_code.extend(
@@ -74,9 +111,7 @@ def numpy_midi(
 	process_code: list[str],
 ) -> None:
 	# TODO merayen probably needs to run in a separate thread, and send events on a queue...?
-	voice_output = create_variable()
-	init_code.append(f"{voice_output} = create_voice()")
-	init_code.append(f"{node.midi._variable} = Midi(voices={{{voice_output}: []}})")
+	init_code.append(f"{node.midi._variable} = Midi(voices={{0: []}})")
 
 	init_code.append("import queue")
 	init_code.append("import threading")
@@ -95,11 +130,11 @@ def numpy_midi(
 
 	# Receive data from the thread above
 	data = create_variable()
-	process_code.append(f"{node.midi._variable}.voices[{voice_output}].clear()")
+	process_code.append(f"{node.midi._variable}.voices[0].clear()")
 	process_code.append(f"while 1:")
 	process_code.append(f"	try:")
 	process_code.append(f"		{data} = {queue}.get_nowait()")
-	process_code.append(f"		{node.midi._variable}.voices[{voice_output}].append((0, {data}[1]))")  # TODO merayen calculate better timing data
+	process_code.append(f"		{node.midi._variable}.voices[0].append((0, {data}[1]))")  # TODO merayen calculate better timing data
 	process_code.append(f"	except queue.Empty:")
 	process_code.append(f"		break")
 
@@ -818,7 +853,7 @@ def introduce_method(init_code: list[str], lines: list[str]):
 		return next(k for k,v in introduce_method.items() if v == lines) # Already defined
 
 	method_name = create_variable()
-	
+
 	init_code.extend([x.replace("METHOD_NAME", method_name) for x in lines])
 
 	introduce_method.lines[method_name] = lines
