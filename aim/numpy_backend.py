@@ -249,7 +249,7 @@ def numpy_noise(
 		# Remove voices that are extinct
 		process_code.extend(
 			[
-				f"for voice_id in set({node.output._variable}.voices) - set({node.voices._variable}.voices)",
+				f"for voice_id in set({node.output._variable}.voices) - set({node.voices._variable}.voices):",
 				f"	{node.output._variable}.voices.pop(voice_id)",
 			]
 		)
