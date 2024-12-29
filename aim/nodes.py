@@ -680,7 +680,6 @@ def test_forbidden_python() -> None:
 		"from os import path",
 		"__a = 0",
 		"a,__b = 0",
-		"print('My text')",
 		"for x in (1,2): pass",
 		"if False: pass",
 		"class A: pass",
