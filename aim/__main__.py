@@ -21,6 +21,16 @@ assert os.path.isdir(opts.path), f"Path {opts.path} is not a folder"
 
 
 if opts.command == "run":
+	import sys
+	if not sys.stdin.isatty():
+		# We are getting data as a pipe. Make a temporary project
+		import tempfile
+		temp_dir = tempfile.TemporaryDirectory()
+		opts.path = temp_dir.name
+
+		with open(opts.path + os.path.sep + "main.py", "w") as f:
+			f.write(sys.stdin.read())
+
 	os.chdir(opts.path)
 	assert os.path.isfile("main.py"), f"main.py not found in directory {opts.path}"
 
