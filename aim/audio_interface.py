@@ -11,7 +11,9 @@ def callback(outdata, frames, time, status):
 
 	if status.output_underflow:
 		print('Output underflow: increase blocksize?')
-		raise sd.CallbackAbort
+		outdata[:] = [0.0]*frame_count  # Output silence instead
+		return
+		#raise sd.CallbackAbort
 
 	assert not status, status
 
