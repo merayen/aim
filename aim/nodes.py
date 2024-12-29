@@ -344,6 +344,17 @@ class score(Node):
 
 
 @node
+class polyphonic(Node):
+	"""
+	Splits up a MIDI signal into multiple voices by key
+	"""
+	input: Any = None
+	max_voices: int = 32
+
+	midi = Outlet(DataType.MIDI)
+
+
+@node
 class unison(Node):
 	"""Create multiple voices
 

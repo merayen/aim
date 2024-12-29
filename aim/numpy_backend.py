@@ -532,6 +532,32 @@ def numpy_unison(
 	else:
 		unsupported(node)
 
+def numpy_polyphonic(
+	node_context: NodeContext,
+	node: out,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	if not isinstance(node.input) or node.input.datatype != DataType.MIDI:
+		unsupported(node)
+
+	packets = create_variable()
+	init_code.append(f"{packets} = []")
+
+	# We only support voice 0, everything else is ignored.
+	process_code.append(f"for voice {node.value._variable}.voices.get(0) or []:")
+	process_code.append(f"	for frame, midi in voice:")
+	process_code.append(f"		if byte & 128:")
+	process_code.append(f"			{packets}.clear()")
+	process_code.append(f"		{packets}.append(byte)")
+
+	process_code.append(f"for packet in {packets}:")
+	process_code.append(f"	if len(packet) == 3:")  # 3 bytes package handling
+	process_code.append(f"		if packet[0] == 144:")  # Key down
+	process_code.append(f"			pass")  # TODO merayen spawn a new voice here
+	process_code.append(f"		elif packet[0] == 144:")  # Key up
+	process_code.append(f"			pass")  # TODO merayen dispose voice here
+
 
 def numpy_delay(
 	node_context: NodeContext,
