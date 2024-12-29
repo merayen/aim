@@ -832,6 +832,7 @@ def compile_to_numpy(
 		"@dataclass",
 		"class Midi:",
 		"	voices: dict[int, list[tuple[int, bytes]]] = field(default_factory=lambda:{})",
+		"	raw: list[int, bytes] = field(default_factory=lambda:[])",  # All data. For still transferring pitch wheel data etc.
 		"random = np.random.default_rng()",
 	]
 
