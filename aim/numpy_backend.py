@@ -124,21 +124,23 @@ def numpy_midi(
 	# Create separate thread that only listens for midi data
 	midi_listener_func = create_variable()
 	init_code.append(f"def {midi_listener_func}():")
-	init_code.append(f'	stream = open("/dev/snd/midiC4D0", "rb")')
-	init_code.append(f"	while 1:")
-	init_code.append(f"		data = stream.read(1)")
+	init_code.append( '	stream = open("/dev/snd/midiC4D0", "rb")')
+	init_code.append( "	while 1:")
+	init_code.append( "		data = stream.read(1)")
 	init_code.append(f"		{queue}.put((time.time(), data))")
 	init_code.append(f"threading.Thread(target={midi_listener_func}).start()")
 
 	# Receive data from the thread above
 	data = create_variable()
 	process_code.append(f"{node.midi._variable}.voices[0].clear()")
-	process_code.append(f"while 1:")
-	process_code.append(f"	try:")
+	process_code.append(f"{node.midi._variable}.raw.clear()")
+	process_code.append( "while 1:")
+	process_code.append( "	try:")
 	process_code.append(f"		{data} = {queue}.get_nowait()")
 	process_code.append(f"		{node.midi._variable}.voices[0].append((0, {data}[1]))")  # TODO merayen calculate better timing data
-	process_code.append(f"	except queue.Empty:")
-	process_code.append(f"		break")
+	process_code.append(f"		{node.midi._variable}.raw.append((0, {data}[1]))")  # TODO merayen calculate better timing data
+	process_code.append( "	except queue.Empty:")
+	process_code.append( "		break")
 
 
 def numpy_print(
@@ -546,17 +548,17 @@ def numpy_polyphonic(
 
 	# We only support voice 0, everything else is ignored.
 	process_code.append(f"for voice {node.value._variable}.voices.get(0) or []:")
-	process_code.append(f"	for frame, midi in voice:")
-	process_code.append(f"		if byte & 128:")
+	process_code.append( "	for frame, midi in voice:")
+	process_code.append( "		if byte & 128:")
 	process_code.append(f"			{packets}.clear()")
 	process_code.append(f"		{packets}.append(byte)")
 
 	process_code.append(f"for packet in {packets}:")
-	process_code.append(f"	if len(packet) == 3:")  # 3 bytes package handling
-	process_code.append(f"		if packet[0] == 144:")  # Key down
-	process_code.append(f"			pass")  # TODO merayen spawn a new voice here
-	process_code.append(f"		elif packet[0] == 144:")  # Key up
-	process_code.append(f"			pass")  # TODO merayen dispose voice here
+	process_code.append( "	if len(packet) == 3:")  # 3 bytes package handling
+	process_code.append( "		if packet[0] == 144:")  # Key down
+	process_code.append( "			pass")  # TODO merayen spawn a new voice here
+	process_code.append( "		elif packet[0] == 144:")  # Key up
+	process_code.append( "			pass")  # TODO merayen dispose voice here
 
 
 def numpy_delay(
@@ -709,7 +711,7 @@ def numpy_oscilloscope(
 			process_code.append(f"		{trigger_index} = np.argmax(voice < {node.trigger_low})")
 			process_code.append(f"		if {trigger_index} > 0 or voice[0] < {node.trigger_low}:")
 			process_code.append(f"			{trigger_low}[voice_id] = {trigger_index} + {clock}[voice_id]")
-			process_code.append(f"		else: continue")  # Low not found, no reason to look for high below
+			process_code.append( "		else: continue")  # Low not found, no reason to look for high below
 
 			# Search for trigger_high value if not timed out or already found
 			process_code.append(f"	if {trigger_low}[voice_id] != {2**63-1} and {trigger_high}[voice_id] == {2**63-1}:")
