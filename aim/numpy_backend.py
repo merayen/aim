@@ -70,13 +70,15 @@ def _oscillator_clock(
 			init_code.append(f"			if {midi_decoder_func}.data[0] == 144:")  # Key down
 			init_code.append(f"				{midi_decoder_func}.frequency = 440 * 2**(({midi_decoder_func}.data[1] - 69) / 12)")
 			init_code.append(f"				{midi_decoder_func}.amplitude = {midi_decoder_func}.data[2] / 127")
+			init_code.append(f"				{midi_decoder_func}.last_key = {midi_decoder_func}.data[1]")
 
-			init_code.append(f"			elif {midi_decoder_func}.data[0] == 128:")  # Key up
+			init_code.append(f"			elif {midi_decoder_func}.data[0] == 128 and {midi_decoder_func}.data[1] == {midi_decoder_func}.last_key:")  # Key up
 			init_code.append(f"				{midi_decoder_func}.amplitude = 0")
 
 			init_code.append(f"{midi_decoder_func}.amplitude = 0")
 			init_code.append(f"{midi_decoder_func}.frequency = 0")
 			init_code.append(f"{midi_decoder_func}.data = None")
+			init_code.append(f"{midi_decoder_func}.last_key = None")
 
 			process_code.extend(
 				[
