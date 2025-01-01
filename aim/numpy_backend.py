@@ -61,6 +61,7 @@ def _oscillator_clock(
 			# XXX this code could be moved out and used by other nodes
 			midi_decoder_func = create_variable()
 			init_code.append(f"def {midi_decoder_func}(byte):")
+			# TODO merayen this does not work as we need to have separate amplitude and frequency etc for each voice, not globally
 			init_code.append(f"	if byte & 128: {midi_decoder_func}.data = [byte]")  # Command
 			init_code.append(f"	elif {midi_decoder_func}.data: {midi_decoder_func}.data.append(byte)")  # Data
 
