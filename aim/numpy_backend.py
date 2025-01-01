@@ -60,20 +60,18 @@ def _oscillator_clock(
 		elif node.frequency.datatype == DataType.MIDI:
 			# XXX this code could be moved out and used by other nodes
 			midi_decoder_func = create_variable()
-			init_code.append(f"def {midi_decoder_func}(data):")
-			init_code.append("	for b in data:")
+			init_code.append(f"def {midi_decoder_func}(byte):")
+			init_code.append(f"	if byte & 128: {midi_decoder_func}.data = [byte]")  # Command
+			init_code.append(f"	elif {midi_decoder_func}.data: {midi_decoder_func}.data.append(byte)")  # Data
 
-			init_code.append(f"		if b & 128: {midi_decoder_func}.data = [b]")  # Command
-			init_code.append(f"		elif {midi_decoder_func}.data: {midi_decoder_func}.data.append(b)")  # Data
+			init_code.append(f"	if len({midi_decoder_func}.data) == 3:")  # Datas with 3 packets
+			init_code.append(f"		if {midi_decoder_func}.data[0] == 144:")  # Key down
+			init_code.append(f"			{midi_decoder_func}.frequency = 440 * 2**(({midi_decoder_func}.data[1] - 69) / 12)")
+			init_code.append(f"			{midi_decoder_func}.amplitude = {midi_decoder_func}.data[2] / 127")
+			init_code.append(f"			{midi_decoder_func}.last_key = {midi_decoder_func}.data[1]")
 
-			init_code.append(f"		if len({midi_decoder_func}.data) == 3:")  # Datas with 3 packets
-			init_code.append(f"			if {midi_decoder_func}.data[0] == 144:")  # Key down
-			init_code.append(f"				{midi_decoder_func}.frequency = 440 * 2**(({midi_decoder_func}.data[1] - 69) / 12)")
-			init_code.append(f"				{midi_decoder_func}.amplitude = {midi_decoder_func}.data[2] / 127")
-			init_code.append(f"				{midi_decoder_func}.last_key = {midi_decoder_func}.data[1]")
-
-			init_code.append(f"			elif {midi_decoder_func}.data[0] == 128 and {midi_decoder_func}.data[1] == {midi_decoder_func}.last_key:")  # Key up
-			init_code.append(f"				{midi_decoder_func}.amplitude = 0")
+			init_code.append(f"		elif {midi_decoder_func}.data[0] == 128 and {midi_decoder_func}.data[1] == {midi_decoder_func}.last_key:")  # Key up
+			init_code.append(f"			{midi_decoder_func}.amplitude = 0")
 
 			init_code.append(f"{midi_decoder_func}.amplitude = 0")
 			init_code.append(f"{midi_decoder_func}.frequency = 0")
@@ -112,11 +110,10 @@ def numpy_midi(
 	init_code: list[str],
 	process_code: list[str],
 ) -> None:
-	# TODO merayen probably needs to run in a separate thread, and send events on a queue...?
 	init_code.append(f"{node.midi._variable} = Midi(voices={{0: []}})")
 
-	init_code.append("import queue")
-	init_code.append("import threading")
+	introduce(init_code, ["import queue"])
+	introduce(init_code, ["import threading"])
 
 	queue = create_variable()
 	init_code.append(f"{queue} = queue.Queue()")
@@ -127,7 +124,7 @@ def numpy_midi(
 	init_code.append( '	stream = open("/dev/snd/midiC4D0", "rb")')
 	init_code.append( "	while 1:")
 	init_code.append( "		data = stream.read(1)")
-	init_code.append(f"		{queue}.put((time.time(), data))")
+	init_code.append(f"		{queue}.put((time.time(), next(iter(data))))")  # Terrible inefficient?
 	init_code.append(f"threading.Thread(target={midi_listener_func}).start()")
 
 	# Receive data from the thread above
@@ -410,7 +407,7 @@ def numpy_trigger(
 	init_code.append(f"{node.output._variable} = Signal()")
 	init_code.append(f"{current_value} = defaultdict(lambda: 0.0)")
 
-	method = introduce_method(
+	method = introduce(
 		init_code,
 		[
 			"import numba",
@@ -540,25 +537,55 @@ def numpy_polyphonic(
 	init_code: list[str],
 	process_code: list[str],
 ) -> None:
-	if not isinstance(node.input) or node.input.datatype != DataType.MIDI:
+	if node.input is None:
+		return
+
+	if not isinstance(node.input, Outlet) or node.input.datatype != DataType.MIDI:
+		unsupported(node)
+
+	if not isinstance(node.max_voices, int):
 		unsupported(node)
 
 	packets = create_variable()
 	init_code.append(f"{packets} = []")
 
-	# We only support voice 0, everything else is ignored.
-	process_code.append(f"for voice {node.value._variable}.voices.get(0) or []:")
-	process_code.append( "	for frame, midi in voice:")
-	process_code.append( "		if byte & 128:")
-	process_code.append(f"			{packets}.clear()")
-	process_code.append(f"		{packets}.append(byte)")
+	pushed_keys = create_variable()
+	init_code.append(f"{pushed_keys} = {{}}")  # Format: {key id: voice id}
 
-	process_code.append(f"for packet in {packets}:")
-	process_code.append( "	if len(packet) == 3:")  # 3 bytes package handling
-	process_code.append( "		if packet[0] == 144:")  # Key down
-	process_code.append( "			pass")  # TODO merayen spawn a new voice here
-	process_code.append( "		elif packet[0] == 144:")  # Key up
-	process_code.append( "			pass")  # TODO merayen dispose voice here
+	# Accumulated states
+	states = create_variable()
+	init_code.append(f"{states} = []")
+
+	# Create output port and forward the raw midi data
+	init_code.append(f"{node.midi._variable} = Midi(raw={node.input._variable}.raw)")
+
+	frame = create_variable()
+	byte = create_variable()
+	voice = create_variable()
+
+	# Clear up any data that we sent last time
+	process_code.append(f"for {voice} in {node.midi._variable}.voices.values():")
+	process_code.append(f"	{voice}.clear()")
+
+	# We only support voice 0, everything else is ignored
+	process_code.append(f"for {frame}, {byte} in {node.input._variable}.voices.get(0) or []:")
+	process_code.append(f"	if {byte} & 128:")
+	process_code.append(f"		{packets}.clear()")
+	process_code.append(f"	{packets}.append(({frame}, {byte}))")
+
+	# Process accumulated data
+	new_voice_id = create_variable()
+	process_code.append(f"	if len({packets}) == 3:")  # 3 bytes package handling
+	process_code.append(f"		if {packets}[0][1] == 144 and len({node.input._variable}.voices) + 1 < {node.max_voices}:")  # Key down, spawn a new voice
+	process_code.append(f"			{new_voice_id} = create_voice()")
+	process_code.append(f"			{node.midi._variable}.voices[{new_voice_id}] = {states} + {packets}")
+	process_code.append(f"			{pushed_keys}[{packets}[1][1]] = {new_voice_id}")
+
+	process_code.append(f"		elif {packets}[0][1] == 128 and {packets}[1][1] in {pushed_keys}:")  # Key up
+	process_code.append(f"			{node.midi._variable}.voices.pop({pushed_keys}[{packets}[1][1]])")  # TODO merayen remove the voice in a more gentle manner (send key-up at correct frame number, and then dispose the voice on next cycle)
+	process_code.append(f"			{pushed_keys}.pop({packets}[1][1])")
+	process_code.append(f"			{packets}.clear()")
+	# TODO merayen store states data like pitch bend etc. make sure to replace existing ones
 
 
 def numpy_delay(
@@ -831,7 +858,7 @@ def compile_to_numpy(
 		"	channel_map: dict = field(default_factory=lambda:{})",
 		"@dataclass",
 		"class Midi:",
-		"	voices: dict[int, list[tuple[int, bytes]]] = field(default_factory=lambda:{})",
+		"	voices: dict[int, list[tuple[int, int]]] = field(default_factory=lambda:{})",
 		"	raw: list[int, bytes] = field(default_factory=lambda:[])",  # All data. For still transferring pitch wheel data etc.
 		"random = np.random.default_rng()",
 	]
@@ -879,18 +906,18 @@ def compile_to_numpy(
 	return code
 
 
-def introduce_method(init_code: list[str], lines: list[str]):
-	if lines in introduce_method.lines.values():
-		return next(k for k,v in introduce_method.items() if v == lines) # Already defined
+def introduce(init_code: list[str], lines: list[str]):
+	if lines in introduce.lines.values():
+		return next(k for k,v in introduce.items() if v == lines) # Already defined
 
 	method_name = create_variable()
 
 	init_code.extend([x.replace("METHOD_NAME", method_name) for x in lines])
 
-	introduce_method.lines[method_name] = lines
+	introduce.lines[method_name] = lines
 
 	return method_name
-introduce_method.lines = {}
+introduce.lines = {}
 
 
 def emit_data(node: Node, code: str) -> str:
