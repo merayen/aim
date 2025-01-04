@@ -147,20 +147,28 @@ def numpy_print(
 	init_code: list[str],
 	process_code: list[str],
 ) -> None:
+	voices = create_variable()
+	voice_id = create_variable()
+	voice = create_variable()
+	init_code.append(f"{voices} = set()")
+
+	process_code.append(f"for {voice_id}, {voice} in {node.input._variable}.voices.items():")
+	process_code.append(f"	if {voice_id} not in {voices}:")
+	process_code.append(f"		{voices}.add({voice_id})")
+	process_code.append(f"		" + debug_print(node, f"f'+voice={{{voice_id}}}, count={{len({voices})}}'"))
+
 	if node.input.datatype == DataType.MIDI:
 		midi_event = create_variable()
-		process_code.append(f"for voice_id, voice in {node.input._variable}.voices.items():")
-		process_code.append(f"	for {midi_event} in voice:")
-		process_code.append("		" + debug_print(node, f'f"voice={{voice_id}}" + str({midi_event})'))
-	elif node.input.datatype == DataType.SIGNAL:
-		previous_voice_count = create_variable()
-		init_code.append(f"{previous_voice_count} = 0")
-		process_code.append(f"global {previous_voice_count}")
-		process_code.append(f"if {previous_voice_count} != len({node.input._variable}.voices):")
-		process_code.append(f"	{previous_voice_count} = len({node.input._variable}.voices)")
-		process_code.append("	" + debug_print(node, f'f"voices={previous_voice_count}"'))
+		process_code.append(f"	for {midi_event} in {voice}:")
+		process_code.append( "		" + debug_print(node, f'f"voice={{{voice_id}}}, midi={{{midi_event}}}"'))
 	else:
 		unsupported(node)
+
+	disposed_voices = create_variable()
+	process_code.append(f"{disposed_voices} = {voices} - set({node.input._variable}.voices)")
+	process_code.append(f"for {voice_id} in {disposed_voices}:")
+	process_code.append(f"	{voices}.remove({voice_id})")
+	process_code.append(f"	" + debug_print(node, f'f"-voice={{{voice_id}}}, count={{len({voices})}}"'))
 
 
 def numpy_sine(
