@@ -48,13 +48,23 @@ def _oscillator_clock(
 			# If e.g another input port has other voices, we just ignore them. This may or may not be
 			# wanted.
 			# TODO merayen remove voices that disappears on the input
+			voice = create_variable()
 			process_code.extend(
 				[
-					f"for {voice_id}, voice in {node.frequency._variable}.voices.items():",
+					f"for {voice_id}, {voice} in {node.frequency._variable}.voices.items():",
 					f"	{clock_array} = {clock}[{voice_id}] +"
-					f"	np.cumsum(_ONES * (voice / {node_context.sample_rate}))",
+					f"	np.cumsum(_ONES * ({voice} / {node_context.sample_rate}))",
 					f"	{clock}[{voice_id}] = {clock_array}[-1] % 1",  # Save position for next time
 					f"	{node.output._variable}.voices[{voice_id}] = {func}",
+				]
+			)
+
+			# Remove voices that has disappeared
+			process_code.extend(
+				[
+					f"for {voice_id} in set({node.output._variable}.voices) - set({node.frequency._variable}.voices):",
+					f"	{clock}.pop({voice_id})",
+					f"	{node.output._variable}.voices.pop({voice_id})",
 				]
 			)
 
@@ -74,11 +84,14 @@ def _oscillator_clock(
 			init_code.append(f"{frequencies} = {{}}")
 			init_code.append(f"{keys} = {{}}")
 
+			frame = create_variable()
+			byte = create_variable()
+			voice = create_variable()
 			process_code.append(f"global {packet}")
-			process_code.append(f"for {voice_id}, voice in {node.frequency._variable}.voices.items():")
-			process_code.append( "	for frame, byte in voice:")
-			process_code.append(f"		if byte & 128: {packet} = [byte]")  # Command
-			process_code.append(f"		elif {packet}: {packet}.append(byte)")  # Data
+			process_code.append(f"for {voice_id}, {voice} in {node.frequency._variable}.voices.items():")
+			process_code.append(f"	for {frame}, {byte} in {voice}:")
+			process_code.append(f"		if {byte} & 128: {packet} = [{byte}]")  # Command
+			process_code.append(f"		elif {packet}: {packet}.append({byte})")  # Data
 
 			process_code.append(f"	if len({packet}) == 3:")  # Datas with 3 packets
 			process_code.append(f"		if {packet}[0] == 144:")  # Key down
@@ -92,17 +105,20 @@ def _oscillator_clock(
 			process_code.append(f"	{clock_array} = ({clock}[{voice_id}] + np.cumsum(_ONES * ({frequencies}[{voice_id}] / {node_context.sample_rate})))")
 			process_code.append(f"	{clock}[{voice_id}] = {clock_array}[-1] % 1")  # Save position for next tim)
 			process_code.append(f"	{node.output._variable}.voices[{voice_id}] = ({func}) * {amplitudes}[{voice_id}]")
+
+			# Remove voices that has disappeared
+			process_code.extend(
+				[
+					f"for {voice_id} in set({node.output._variable}.voices) - set({node.frequency._variable}.voices):",
+					f"	{clock}.pop({voice_id})",
+					f"	{amplitudes}.pop({voice_id})",
+					f"	{frequencies}.pop({voice_id})",
+					f"	{keys}.pop({voice_id})",
+					f"	{node.output._variable}.voices.pop({voice_id})",
+				]
+			)
 		else:
 			unsupported(node)
-
-		# Remove voices that has disappeared
-		process_code.extend(
-			[
-				f"for {voice_id} in set({node.output._variable}.voices) - set({node.frequency._variable}.voices):",
-				f"	{clock}.pop({voice_id})",
-				f"	{node.output._variable}.voices.pop({voice_id})",
-			]
-		)
 	else:
 		unsupported(node)
 
