@@ -78,7 +78,7 @@ def _oscillator_clock(
 			frequencies = create_variable()
 			keys = create_variable()
 
-			init_code.append(f"{packet} = []")
+			init_code.append(f"{packet} = {{}}")
 			init_code.append(f"{state_packet} = []")
 			init_code.append(f"{amplitudes} = {{}}")
 			init_code.append(f"{frequencies} = {{}}")
@@ -87,19 +87,18 @@ def _oscillator_clock(
 			frame = create_variable()
 			byte = create_variable()
 			voice = create_variable()
-			process_code.append(f"global {packet}")
 			process_code.append(f"for {voice_id}, {voice} in {node.frequency._variable}.voices.items():")
 			process_code.append(f"	for {frame}, {byte} in {voice}:")
-			process_code.append(f"		if {byte} & 128: {packet} = [{byte}]")  # Command
-			process_code.append(f"		elif {packet}: {packet}.append({byte})")  # Data
+			process_code.append(f"		if {byte} & 128: {packet}[{voice_id}] = [{byte}]")  # Command
+			process_code.append(f"		elif {packet}.get({voice_id}): {packet}[{voice_id}].append({byte})")  # Data
 
-			process_code.append(f"	if len({packet}) == 3:")  # Datas with 3 packets
-			process_code.append(f"		if {packet}[0] == 144:")  # Key down
-			process_code.append(f"			{frequencies}[{voice_id}] = 440 * 2**(({packet}[1] - 69) / 12)")
-			process_code.append(f"			{amplitudes}[{voice_id}] = {packet}[2] / 127")
-			process_code.append(f"			{keys}[{voice_id}] = {packet}[1]")
+			process_code.append(f"	if len({packet}[{voice_id}]) == 3:")  # Datas with 3 packets
+			process_code.append(f"		if {packet}[{voice_id}][0] == 144:")  # Key down
+			process_code.append(f"			{frequencies}[{voice_id}] = 440 * 2**(({packet}[{voice_id}][1] - 69) / 12)")
+			process_code.append(f"			{amplitudes}[{voice_id}] = {packet}[{voice_id}][2] / 127")
+			process_code.append(f"			{keys}[{voice_id}] = {packet}[{voice_id}][1]")
 
-			process_code.append(f"		elif {packet}[0] == 128 and {voice_id} in {keys} and {packet}[1] == {keys}[{voice_id}]:")  # Key up
+			process_code.append(f"		elif {packet}[{voice_id}][0] == 128 and {voice_id} in {keys} and {packet}[{voice_id}][1] == {keys}[{voice_id}]:")  # Key up
 			process_code.append(f"			{amplitudes}[{voice_id}] = 0")
 
 			process_code.append(f"	{clock_array} = ({clock}[{voice_id}] + np.cumsum(_ONES * ({frequencies}[{voice_id}] / {node_context.sample_rate})))")
