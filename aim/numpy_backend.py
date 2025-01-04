@@ -24,6 +24,7 @@ def _oscillator_clock(
 	"""
 	clock = create_variable()
 	clock_array = create_variable()
+	voice_id = create_variable()
 
 	if isinstance(node.frequency, (int, float)):
 		func %= {'clock_array': clock_array, "voice_id": 0}
@@ -49,56 +50,57 @@ def _oscillator_clock(
 			# TODO merayen remove voices that disappears on the input
 			process_code.extend(
 				[
-					f"for voice_id, voice in {node.frequency._variable}.voices.items():",
-					f"	{clock_array} = {clock}[voice_id] +"
+					f"for {voice_id}, voice in {node.frequency._variable}.voices.items():",
+					f"	{clock_array} = {clock}[{voice_id}] +"
 					f"	np.cumsum(_ONES * (voice / {node_context.sample_rate}))",
-					f"	{clock}[voice_id] = {clock_array}[-1] % 1",  # Save position for next time
-					f"	{node.output._variable}.voices[voice_id] = {func}",
+					f"	{clock}[{voice_id}] = {clock_array}[-1] % 1",  # Save position for next time
+					f"	{node.output._variable}.voices[{voice_id}] = {func}",
 				]
 			)
 
 		elif node.frequency.datatype == DataType.MIDI:
 			# XXX this code could be moved out and used by other nodes
-			midi_decoder_func = create_variable()
-			init_code.append(f"def {midi_decoder_func}(byte):")
 			# TODO merayen this does not work as we need to have separate amplitude and frequency etc for each voice, not globally
-			init_code.append(f"	if byte & 128: {midi_decoder_func}.data = [byte]")  # Command
-			init_code.append(f"	elif {midi_decoder_func}.data: {midi_decoder_func}.data.append(byte)")  # Data
 
-			init_code.append(f"	if len({midi_decoder_func}.data) == 3:")  # Datas with 3 packets
-			init_code.append(f"		if {midi_decoder_func}.data[0] == 144:")  # Key down
-			init_code.append(f"			{midi_decoder_func}.frequency = 440 * 2**(({midi_decoder_func}.data[1] - 69) / 12)")
-			init_code.append(f"			{midi_decoder_func}.amplitude = {midi_decoder_func}.data[2] / 127")
-			init_code.append(f"			{midi_decoder_func}.last_key = {midi_decoder_func}.data[1]")
+			packet = create_variable()
+			state_packet = create_variable()
+			amplitudes = create_variable()
+			frequencies = create_variable()
+			keys = create_variable()
 
-			init_code.append(f"		elif {midi_decoder_func}.data[0] == 128 and {midi_decoder_func}.data[1] == {midi_decoder_func}.last_key:")  # Key up
-			init_code.append(f"			{midi_decoder_func}.amplitude = 0")
+			init_code.append(f"{packet} = []")
+			init_code.append(f"{state_packet} = []")
+			init_code.append(f"{amplitudes} = {{}}")
+			init_code.append(f"{frequencies} = {{}}")
+			init_code.append(f"{keys} = {{}}")
 
-			init_code.append(f"{midi_decoder_func}.amplitude = 0")
-			init_code.append(f"{midi_decoder_func}.frequency = 0")
-			init_code.append(f"{midi_decoder_func}.data = None")
-			init_code.append(f"{midi_decoder_func}.last_key = None")
+			process_code.append(f"global {packet}")
+			process_code.append(f"for {voice_id}, voice in {node.frequency._variable}.voices.items():")
+			process_code.append( "	for frame, byte in voice:")
+			process_code.append(f"		if byte & 128: {packet} = [byte]")  # Command
+			process_code.append(f"		elif {packet}: {packet}.append(byte)")  # Data
 
-			process_code.extend(
-				[
-					f"for voice_id, voice in {node.frequency._variable}.voices.items():",
-					 "	for frame, midi in voice:",
-					f"		{midi_decoder_func}(midi)",
-					f"	{clock_array} = {clock}[voice_id] +"
-					f"	np.cumsum(_ONES * ({midi_decoder_func}.frequency / {node_context.sample_rate}))",
-					f"	{clock}[voice_id] = {clock_array}[-1] % 1",  # Save position for next time
-					f"	{node.output._variable}.voices[voice_id] = ({func}) * {midi_decoder_func}.amplitude",
-				]
-			)
+			process_code.append(f"	if len({packet}) == 3:")  # Datas with 3 packets
+			process_code.append(f"		if {packet}[0] == 144:")  # Key down
+			process_code.append(f"			{frequencies}[{voice_id}] = 440 * 2**(({packet}[1] - 69) / 12)")
+			process_code.append(f"			{amplitudes}[{voice_id}] = {packet}[2] / 127")
+			process_code.append(f"			{keys}[{voice_id}] = {packet}[1]")
+
+			process_code.append(f"		elif {packet}[0] == 128 and {voice_id} in {keys} and {packet}[1] == {keys}[{voice_id}]:")  # Key up
+			process_code.append(f"			{amplitudes}[{voice_id}] = 0")
+
+			process_code.append(f"	{clock_array} = ({clock}[{voice_id}] + np.cumsum(_ONES * ({frequencies}[{voice_id}] / {node_context.sample_rate})))")
+			process_code.append(f"	{clock}[{voice_id}] = {clock_array}[-1] % 1")  # Save position for next tim)
+			process_code.append(f"	{node.output._variable}.voices[{voice_id}] = ({func}) * {amplitudes}[{voice_id}]")
 		else:
 			unsupported(node)
 
 		# Remove voices that has disappeared
 		process_code.extend(
 			[
-				f"for voice_id in set({node.output._variable}.voices) - set({node.frequency._variable}.voices):",
-				f"	{clock}.pop(voice_id)",
-				f"	{node.output._variable}.voices.pop(voice_id)",
+				f"for {voice_id} in set({node.output._variable}.voices) - set({node.frequency._variable}.voices):",
+				f"	{clock}.pop({voice_id})",
+				f"	{node.output._variable}.voices.pop({voice_id})",
 			]
 		)
 	else:
@@ -540,6 +542,7 @@ def numpy_unison(
 	else:
 		unsupported(node)
 
+
 def numpy_polyphonic(
 	node_context: NodeContext,
 	node: out,
@@ -571,12 +574,21 @@ def numpy_polyphonic(
 	frame = create_variable()
 	byte = create_variable()
 	voice = create_variable()
+	active_voice_ids = create_variable()
+	voice_id = create_variable()
+
+	init_code.append(f"{active_voice_ids} = {{0}}")
 
 	# Clear up any data that we sent last time
 	process_code.append(f"for {voice} in {node.midi._variable}.voices.values():")
 	process_code.append(f"	{voice}.clear()")
 
-	# We only support voice 0, everything else is ignored
+	# Remove any voices that had "key up" event on last cycle
+	process_code.append(f"for {voice_id} in list({node.midi._variable}.voices):")
+	process_code.append(f"	if {voice_id} not in {active_voice_ids}:")
+	process_code.append(f"		{node.midi._variable}.voices.pop({voice_id})")
+
+	# We only support voice 0 for input, everything else is ignored
 	process_code.append(f"for {frame}, {byte} in {node.input._variable}.voices.get(0) or []:")
 	process_code.append(f"	if {byte} & 128:")
 	process_code.append(f"		{packets}.clear()")
@@ -587,11 +599,13 @@ def numpy_polyphonic(
 	process_code.append(f"	if len({packets}) == 3:")  # 3 bytes package handling
 	process_code.append(f"		if {packets}[0][1] == 144 and len({node.input._variable}.voices) + 1 < {node.max_voices}:")  # Key down, spawn a new voice
 	process_code.append(f"			{new_voice_id} = create_voice()")
+	process_code.append(f"			{active_voice_ids}.add({new_voice_id})")
 	process_code.append(f"			{node.midi._variable}.voices[{new_voice_id}] = {states} + {packets}")
 	process_code.append(f"			{pushed_keys}[{packets}[1][1]] = {new_voice_id}")
+	process_code.append(f"			{packets}.clear()")
 
 	process_code.append(f"		elif {packets}[0][1] == 128 and {packets}[1][1] in {pushed_keys}:")  # Key up
-	process_code.append(f"			{node.midi._variable}.voices.pop({pushed_keys}[{packets}[1][1]])")  # TODO merayen remove the voice in a more gentle manner (send key-up at correct frame number, and then dispose the voice on next cycle)
+	process_code.append(f"			{active_voice_ids}.remove({pushed_keys}[{packets}[1][1]])")
 	process_code.append(f"			{pushed_keys}.pop({packets}[1][1])")
 	process_code.append(f"			{packets}.clear()")
 	# TODO merayen store states data like pitch bend etc. make sure to replace existing ones
