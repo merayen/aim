@@ -300,6 +300,13 @@ class trigger(Node):
 
 
 @node
+class time(Node):
+	input: Any = 0.0
+
+	output = Outlet(DataType.SIGNAL)
+
+
+@node
 class clip(Node):
 	value: Any = 0.0
 
