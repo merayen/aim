@@ -50,7 +50,9 @@ class oscilloscope_listener(Listener):
 			assert voice_id is not None
 
 			if voice_id in self.lines and len(samples) == 0:
-				self.axs.lines.pop(self.axs.lines.index(self.lines[voice_id]))
+				for line in self.axs.lines:
+					if line is self.lines[voice_id]:
+						line.remove()
 				self.lines.pop(voice_id)
 			elif voice_id not in self.lines:
 				self.lines[voice_id] = self.axs.plot(samples, antialiased=False)[0]
