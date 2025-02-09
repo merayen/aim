@@ -645,7 +645,22 @@ def numpy_time(
 	process_code: list[str],
 ) -> None:
 
-	if not node.input:
+	if node.input:
+		sample_clocks = create_variable()
+		voice_id = create_variable()
+
+		init_code.append(f"{sample_clocks} = {{}}")
+		init_code.append(f"{node.output._variable} = Signal()")
+
+		process_code.append(f"for {voice_id} in {node.input._variable}.voices:")
+		process_code.append(f"	if {voice_id} not in {sample_clocks}:")
+		process_code.append(f"		{sample_clocks}[{voice_id}] = 0")
+		process_code.append(
+			f"	{node.output._variable}.voices[0] = "
+			f"	{sample_clocks}[{voice_id}] / {node_context.sample_rate} + np.cumsum(_ONES / {node_context.sample_rate})"
+		)
+		process_code.append(f"	{sample_clocks}[{voice_id}] += {node_context.frame_count}")
+	else:
 		sample_clock = create_variable()
 		init_code.append(f"{sample_clock} = 0")
 		init_code.append(
@@ -659,10 +674,6 @@ def numpy_time(
 			f"{sample_clock} / {node_context.sample_rate} + np.cumsum(_ONES / {node_context.sample_rate})"
 		)
 		process_code.append(f"{sample_clock} += {node_context.frame_count}")
-	else:
-		times = create_variable()
-		init_code.append(f"{times} = {{}}")
-		raise NotImplementedError
 
 def numpy_audiofile(
 	node_context: NodeContext,
