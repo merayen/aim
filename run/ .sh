@@ -1,1 +1,1 @@
-ruff check $VIM_FILE
+ruff check --output-format concise $VIM_FILE

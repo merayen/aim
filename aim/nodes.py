@@ -301,7 +301,10 @@ class trigger(Node):
 
 @node
 class time(Node):
-	input: Any = 0.0
+	voice_trigger: Any = 0.0
+
+	# This can be modulated to modulate the speed of time
+	speed: Any = 1.0
 
 	output = Outlet(DataType.SIGNAL)
 
