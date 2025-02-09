@@ -522,6 +522,18 @@ def numpy_clip(
 	)
 
 
+def numpy_frequency(
+	node_context: NodeContext,
+	node: out,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	if node.input:
+		raise NotImplementedError
+	else:
+		init_code.append(f"{node.output._variable} = Signal(voices={{0: _ONES*440}})")
+
+
 def numpy_score(
 	node_context: NodeContext,
 	node: out,

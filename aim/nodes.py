@@ -317,6 +317,13 @@ class clip(Node):
 
 
 @node
+class frequency(Node):
+	input: Any = 0.0
+
+	output = Outlet(DataType.SIGNAL)
+
+
+@node
 class dB(Node):
 	"""Convert a dB number to a linear float.
 
