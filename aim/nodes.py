@@ -242,6 +242,12 @@ class mix(Node):
 
 
 @node
+class downmix(Node):
+	input: Any = None
+	
+	output = Outlet(DataType.SIGNAL)
+
+@node
 class sine(Node):
 	frequency: Any = 440
 	phase: Any = 0

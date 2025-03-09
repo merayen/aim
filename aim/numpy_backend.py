@@ -485,6 +485,28 @@ def numpy_mix(
 	process_code.append(f"	{node.output._variable}.voices.pop(voice_id)")
 
 
+def numpy_downmix(
+	node_context: NodeContext,
+	node: Node,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	init_code.append(f"{node.output._variable} = Signal(voices={{0:np.zeros({node_context.frame_count})}})")
+
+	if node.input is None:
+		return
+
+	elif isinstance(node.input, Outlet) and node.input.datatype == DataType.SIGNAL:
+		# TODO merayen downmix to channels instead, allowing channel-voice labelling for channel routing
+		voice_id = create_variable()
+		voice = create_variable()
+		process_code.append(f"{node.output._variable}.voices[0] = _SILENCE * 1")
+		process_code.append(f"for {voice_id}, {voice} in {node.input._variable}.voices.items():")
+		process_code.append(f"	{node.output._variable}.voices[0] += {voice}")
+	else:
+		unsupported(node)
+
+
 def numpy_slew(
 	node_context: NodeContext,
 	node: out,
