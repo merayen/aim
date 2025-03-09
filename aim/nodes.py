@@ -244,6 +244,7 @@ class mix(Node):
 @node
 class sine(Node):
 	frequency: Any = 440
+	phase: Any = 0
 
 	output = Outlet(DataType.SIGNAL)
 
@@ -252,6 +253,7 @@ class sine(Node):
 class square(Node):
 	frequency: Any = 440
 	duty: Any = 0.5
+	phase: Any = 0
 
 	output = Outlet(DataType.SIGNAL)
 
@@ -275,6 +277,7 @@ class random(Node):
 @node
 class saw(Node):
 	frequency: Any = 440
+	phase: Any = 0
 
 	output = Outlet(DataType.SIGNAL)
 

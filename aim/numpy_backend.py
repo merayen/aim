@@ -28,7 +28,10 @@ def _oscillator_clock(
 
 	if isinstance(node.frequency, (int, float)):
 		func %= {'clock_array': clock_array, "voice_id": 0}
-		init_code.append(f"{clock} = 0.0")
+		if isinstance(node.phase, (int, float)):
+			init_code.append(f"{clock} = {node.phase}")
+		else:
+			init_code.append(f"{clock} = 0.0")
 		init_code.append(f"{node.output._variable} = Signal()")
 		process_code.append(f"global {clock}")
 		process_code.append(
@@ -40,24 +43,30 @@ def _oscillator_clock(
 
 	elif isinstance(node.frequency, Outlet):
 		func %= {'clock_array': clock_array, "voice_id": "voice_id"}
-		init_code.append(f"{clock} = defaultdict(lambda: 0.0)")
+
+		init_code.append(f"{clock} = {{}}")
 		init_code.append(f"{node.output._variable} = Signal()")
 
 		if node.frequency.datatype == DataType.SIGNAL:
 			# Note that we only respect voices on the frequency-input
 			# If e.g another input port has other voices, we just ignore them. This may or may not be
 			# wanted.
-			# TODO merayen remove voices that disappears on the input
+
+			# Create new voices
+			process_code.append(f"for {voice_id} in set({node.frequency._variable}.voices) - set({node.output._variable}.voices):")
+
+			if node.phase is None:
+				process_code.append(f"	{clock}[{voice_id}] = 0")
+			elif isinstance(node.phase, (int, float)):
+				process_code.append(f"	{clock}[{voice_id}] = {node.phase}")
+			elif isinstance(node.phase, Outlet) and node.phase.datatype == DataType.SIGNAL:
+				process_code.append(f"	{clock}[{voice_id}] = {node.phase._variable}.voices.get({voice_id}, [0])[0]")
+
 			voice = create_variable()
-			process_code.extend(
-				[
-					f"for {voice_id}, {voice} in {node.frequency._variable}.voices.items():",
-					f"	{clock_array} = {clock}[{voice_id}] +"
-					f"	np.cumsum(_ONES * ({voice} / {node_context.sample_rate}))",
-					f"	{clock}[{voice_id}] = {clock_array}[-1] % 1",  # Save position for next time
-					f"	{node.output._variable}.voices[{voice_id}] = {func}",
-				]
-			)
+			process_code.append(f"for {voice_id}, {voice} in {node.frequency._variable}.voices.items():")
+			process_code.append(f"	{clock_array} = {clock}[{voice_id}] + np.cumsum(_ONES * ({voice} / {node_context.sample_rate}))")
+			process_code.append(f"	{clock}[{voice_id}] = {clock_array}[-1] % 1")
+			process_code.append(f"	{node.output._variable}.voices[{voice_id}] = {func}")
 
 			# Remove voices that has disappeared
 			process_code.extend(
