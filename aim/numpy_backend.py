@@ -621,7 +621,7 @@ def numpy_unison(
 		init_code.append(f"{node.output._variable} = Signal()")
 		if isinstance(node.voices, int):
 			init_code.append(f"for _ in range({node.voices}):")
-			init_code.append(f"	{node.output._variable}.voices[create_voice()] = _ONES + {node.input}")
+			init_code.append(f"	{node.output._variable}.voices[create_voice()] = _ONES * {node.input}")
 	else:
 		unsupported(node)
 
