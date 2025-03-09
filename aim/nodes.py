@@ -265,6 +265,14 @@ class noise(Node):
 
 
 @node
+class random(Node):
+	# Input is only used for voicing. No data read.
+	input: Any = None
+	
+	output = Outlet(DataType.SIGNAL)
+
+
+@node
 class saw(Node):
 	frequency: Any = 440
 
@@ -379,7 +387,7 @@ class unison(Node):
 
 	Note that voices are only deallocated if the whole following chain marks the current voice as
 	removable."""
-	input: Any = None
+	input: Any = 0
 	voices: int = 1  # For each key pressed
 	max_voices: int = 32  # Destroy old voices when this limit is hit
 

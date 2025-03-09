@@ -289,6 +289,39 @@ def numpy_noise(
 		)
 
 
+def numpy_random(
+	node_context: NodeContext,
+	node: Node,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	if node.input is None:
+		init_code.append(f"{node.output._variable} = Signal(voices={{0: _ONES*random.random()*2-1}})")
+	elif isinstance(node.input, Outlet) and node.input.datatype == DataType.SIGNAL:
+		init_code.append(f"{node.output._variable} = Signal()")
+
+		voice_id = create_variable()
+
+		# Create new voices
+		process_code.extend(
+			[
+				f"for {voice_id} in set({node.input._variable}.voices) - set({node.output._variable}.voices):",
+				f"	{node.output._variable}.voices[{voice_id}] = _ONES*random.random()*2-1",
+			]
+		)
+
+		# Remove old voices
+		process_code.extend(
+			[
+				f"for {voice_id} in set({node.output._variable}.voices) - set({node.input._variable}.voices):",
+				f"	{node.output._variable}.voices.pop({voice_id})",
+			]
+		)
+		
+	else:
+		unsupported(node)
+
+
 def _numpy_math(
 	node_context: NodeContext,
 	node: Node,
@@ -310,7 +343,6 @@ def _numpy_math(
 				f"np.zeros({node_context.frame_count}) + {eval('node.in0'+op+'node.in1')}}})"
 		)
 	elif isinstance(node.in0, Outlet) and isinstance(node.in1, Outlet):
-		# TODO merayen remove voices that disappears on the input
 		init_code.append(f"{node.output._variable} = Signal()")
 		if node.in0.datatype == DataType.SIGNAL and node.in1.datatype == DataType.SIGNAL:
 			process_code.extend(
@@ -332,7 +364,6 @@ def _numpy_math(
 			unsupported(node)
 
 	elif isinstance(node.in0, (int, float)) and isinstance(node.in1, Outlet):
-		# TODO merayen remove voices that disappears on the input
 		init_code.append(f"{node.output._variable} = Signal()")
 		if node.in1.datatype == DataType.SIGNAL:
 			process_code.extend(
@@ -353,7 +384,6 @@ def _numpy_math(
 			unsupported(node)
 
 	elif isinstance(node.in0, Outlet) and isinstance(node.in1, (int, float)):
-		# TODO merayen remove voices that disappears on the input
 		init_code.append(f"{node.output._variable} = Signal()")
 		if node.in0.datatype == DataType.SIGNAL:
 			process_code.extend(
