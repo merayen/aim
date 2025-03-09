@@ -624,7 +624,7 @@ def numpy_unison(
 			init_code.append(f"	{node.output._variable}.voices[create_voice()] = _ONES * {node.input}")
 		else:
 			unsupported(node)
-	elif isinstance(node.input, Outlet):
+	elif isinstance(node.input, Outlet) and node.input.datatype == DataType.SIGNAL:
 		init_code.append(f"{node.output._variable} = Signal()")
 		if isinstance(node.voices, int):
 			# Create new, incoming voices
