@@ -622,6 +622,51 @@ def numpy_unison(
 		if isinstance(node.voices, int):
 			init_code.append(f"for _ in range({node.voices}):")
 			init_code.append(f"	{node.output._variable}.voices[create_voice()] = _ONES * {node.input}")
+		else:
+			unsupported(node)
+	elif isinstance(node.input, Outlet):
+		init_code.append(f"{node.output._variable} = Signal()")
+		if isinstance(node.voices, int):
+			# Create new, incoming voices
+			voice_map = create_variable()
+			init_code.append(f"{voice_map} = {{}}")
+
+			voice_id = create_variable()
+			new_voice_id = create_variable()
+			i = create_variable()
+
+			# Remove old voices
+			process_code.extend(
+				[
+					f"for {voice_id} in set({voice_map}) - set({node.input._variable}.voices):",
+					f"	for {i} in {voice_map}.pop({voice_id}):",
+					f"		{node.output._variable}.voices.pop({i})",
+				]
+			)
+
+			# Create new voices
+			process_code.extend(
+				[
+					f"for {voice_id} in set({node.input._variable}.voices) - set({voice_map}):",
+					f"	{voice_map}[{voice_id}] = []",
+					f"	for {i} in range({node.voices}):",
+					f"		{new_voice_id} = create_voice()",
+					f"		{voice_map}[{voice_id}].append({new_voice_id})",
+					f"		{node.output._variable}.voices[{new_voice_id}] = {node.input._variable}.voices[{voice_id}]",
+				]
+			)
+
+			# Forward
+			process_code.extend(
+				[
+					f"for {voice_id} in {voice_map}:",
+					f"	for {new_voice_id} in {voice_map}[{voice_id}]:",
+					f"		{node.output._variable}.voices[{new_voice_id}] = {node.input._variable}.voices[{voice_id}]",
+				]
+			)
+
+		else:
+			unsupported(node)
 	else:
 		unsupported(node)
 
