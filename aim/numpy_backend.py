@@ -337,12 +337,14 @@ def _numpy_math(
 	init_code: list[str],
 	process_code: list[str],
 ) -> None:
-	from aim.nodes import add, sub, mul, div
+	from aim.nodes import add, sub, mul, div, gt, lt
 	op = {
 		add: "+",
 		sub: "-",
 		mul: "*",
 		div: "/",
+		gt: ">",
+		lt: "<",
 	}[node.__class__]
 
 	if isinstance(node.in0, (int, float)) and isinstance(node.in1, (int, float)):
@@ -357,7 +359,7 @@ def _numpy_math(
 			process_code.extend(
 				[
 					f"for voice_id in set({node.in0._variable}.voices.keys()).union({node.in1._variable}.voices.keys()):",
-					f"	{node.output._variable}.voices[voice_id] = {node.in0._variable}.voices.get(voice_id, _SILENCE) {op} {node.in1._variable}.voices.get(voice_id, _SILENCE)",
+					f"	{node.output._variable}.voices[voice_id] = ({node.in0._variable}.voices.get(voice_id, _SILENCE) {op} {node.in1._variable}.voices.get(voice_id, _SILENCE)) * 1",
 				]
 			)
 
@@ -378,7 +380,7 @@ def _numpy_math(
 			process_code.extend(
 				[
 					f"for voice_id in {node.in1._variable}.voices:",
-					f"	{node.output._variable}.voices[voice_id] = {node.in0} {op} {node.in1._variable}.voices.get(voice_id, _SILENCE)",
+					f"	{node.output._variable}.voices[voice_id] = ({node.in0} {op} {node.in1._variable}.voices.get(voice_id, _SILENCE)) * 1",
 				]
 			)
 
@@ -398,7 +400,7 @@ def _numpy_math(
 			process_code.extend(
 				[
 					f"for voice_id in {node.in0._variable}.voices:",
-					f"	{node.output._variable}.voices[voice_id] = {node.in0._variable}.voices.get(voice_id, _SILENCE) {op} {node.in1}",
+					f"	{node.output._variable}.voices[voice_id] = ({node.in0._variable}.voices.get(voice_id, _SILENCE) {op} {node.in1}) * 1",
 				]
 			)
 
@@ -420,6 +422,8 @@ numpy_add = _numpy_math
 numpy_sub = _numpy_math
 numpy_mul = _numpy_math
 numpy_div = _numpy_math
+numpy_gt = _numpy_math
+numpy_lt = _numpy_math
 
 
 def numpy_mix(

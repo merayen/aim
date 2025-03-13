@@ -11,7 +11,7 @@ from aim import importing
 
 def node(cls: type):
 	assert issubclass(cls, Node)
-	return dataclass(order=True)(cls)
+	return dataclass()(cls)
 
 
 class RestrictedPythonError(Exception):
@@ -40,14 +40,12 @@ class Node(Entity):
 
 	def __truediv__(self, other) -> "div":
 		return div(self, other)
+	
+	def __gt__(self, other) -> "gt":
+		return gt(self, other)
 
-	def __gt__(self, other):
-		# XXX Not working, for some reason
-		return trigger(self, other)
-
-	def __lt__(self, other) -> "trigger":
-		# XXX Not working, for some reason
-		raise NotImplementedError("support lt comparison")  # TODO merayen support lt comparison
+	def __lt__(self, other) -> "lt":
+		return lt(self, other)
 
 	def _first_outlet(self) -> Optional["Outlet"]:
 		# Node is sent as input, get the first outlet
@@ -171,6 +169,12 @@ class Outlet(Entity):
 
 	def __truediv__(self, other) -> "div":
 		return div(self, self.__get_outlet(other))
+	
+	def __gt__(self, other) -> "gt":
+		return gt(self, self.__get_outlet(other))
+
+	def __lt__(self, other) -> "lt":
+		return lt(self, self.__get_outlet(other))
 
 	def __post_init__(self) -> None:
 		self._index = Outlet._index_counter
@@ -226,6 +230,22 @@ class mul(Node):
 
 @node
 class div(Node):
+	in0: Any = None
+	in1: Any = None
+
+	output = Outlet(DataType.SIGNAL)
+
+
+@node
+class gt(Node):
+	in0: Any = None
+	in1: Any = None
+
+	output = Outlet(DataType.SIGNAL)
+
+
+@node
+class lt(Node):
 	in0: Any = None
 	in1: Any = None
 
@@ -748,6 +768,12 @@ def test_forbidden_python() -> None:
 			load(x)
 		except RestrictedPythonError:
 			raise Exception(f"Should have not restricted {x!r}")
+
+
+def test_gt():
+	assert isinstance(sine(), Node)
+	assert isinstance(sine() > sine(), gt)
+	assert isinstance(sine() < sine(), lt)
 
 
 if __name__ == '__main__':
