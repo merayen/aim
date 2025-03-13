@@ -309,7 +309,7 @@ class saw(Node):
 
 
 @node
-class slew(Node):
+class slewrate(Node):
 	"""
 	Increase rise and fall time
 	"""
@@ -381,7 +381,7 @@ class dB(Node):
 class signal(Node):
 	"""Convert input to a signal
 
-	It can be audio, another signal (no op), midi etc"""
+	It can be audio, another signal (pass through), midi etc"""
 	input: Any = 0.0
 
 	output = Outlet(DataType.SIGNAL)
@@ -390,9 +390,9 @@ class signal(Node):
 @node
 class score(Node):
 	"""
-	Midi score written as text
+	Midi score written as a textfile
 	"""
-	score: str | None = None
+	path: str | None = None
 
 	output = Outlet(DataType.MIDI)
 

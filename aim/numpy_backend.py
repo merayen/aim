@@ -97,6 +97,12 @@ def _oscillator_clock(
 			byte = create_variable()
 			voice = create_variable()
 			process_code.append(f"for {voice_id}, {voice} in {node.frequency._variable}.voices.items():")
+			process_code.append(f"	{packet}.setdefault({voice_id}, [])")
+			process_code.append(f"	{frequencies}.setdefault({voice_id}, 0)")
+			process_code.append(f"	{amplitudes}.setdefault({voice_id}, 0)")
+			process_code.append(f"	{clock}.setdefault({voice_id}, 0)")
+			process_code.append(f"	{keys}.setdefault({voice_id}, [])")
+
 			process_code.append(f"	for {frame}, {byte} in {voice}:")
 			process_code.append(f"		if {byte} & 128: {packet}[{voice_id}] = [{byte}]")  # Command
 			process_code.append(f"		elif {packet}.get({voice_id}): {packet}[{voice_id}].append({byte})")  # Data
@@ -118,11 +124,12 @@ def _oscillator_clock(
 			process_code.extend(
 				[
 					f"for {voice_id} in set({node.output._variable}.voices) - set({node.frequency._variable}.voices):",
-					f"	{clock}.pop({voice_id})",
-					f"	{amplitudes}.pop({voice_id})",
-					f"	{frequencies}.pop({voice_id})",
-					f"	{keys}.pop({voice_id})",
-					f"	{node.output._variable}.voices.pop({voice_id})",
+					f"	{clock}.pop({voice_id}, None)",
+					f"	{amplitudes}.pop({voice_id}, None)",
+					f"	{frequencies}.pop({voice_id}, None)",
+					f"	{keys}.pop({voice_id}, None)",
+					f"	{packet}.pop({voice_id}, None)",
+					f"	{node.output._variable}.voices.pop({voice_id}, None)",
 				]
 			)
 		else:
@@ -326,7 +333,7 @@ def numpy_random(
 				f"	{node.output._variable}.voices.pop({voice_id})",
 			]
 		)
-		
+
 	else:
 		unsupported(node)
 
@@ -511,7 +518,7 @@ def numpy_downmix(
 		unsupported(node)
 
 
-def numpy_slew(
+def numpy_slewrate(
 	node_context: NodeContext,
 	node: out,
 	init_code: list[str],
@@ -550,7 +557,6 @@ def numpy_trigger(
 	)
 
 	if isinstance(node.value, Outlet):
-
 		if isinstance(node.on, (int, float)):
 			on = create_variable()
 			init_code.append(f"{on} = np.zeros({node_context.frame_count}) + {node.on}")
@@ -590,6 +596,7 @@ def numpy_trigger(
 				f"	{node.output._variable}.voices.pop(voice_id)",
 			]
 		)
+
 	else:
 		unsupported(node)
 
@@ -661,12 +668,73 @@ def numpy_score(
 	init_code: list[str],
 	process_code: list[str],
 ) -> None:
-	init_code.append(f"{node.output._variable} = Midi()")
+	init_code.append(f"{node.output._variable} = Midi(voices={{0: []}})")
 
-	if node.score is None:
+	if node.path is None:
 		return
-	elif isinstance(node.score, str):
-		raise NotImplementedError("")  # TODO merayen implement
+	elif isinstance(node.path, str):
+		# Key down and key ups
+		with open(node.path) as f:
+			downs = []
+			ups = []
+			for line in (x.strip() for x in f if x.strip() and not x.strip().startswith("#")):
+				start, length, note = line.split()
+				assert all(x in "0123456789+-/" for x in start)
+				assert all(x in "0123456789+-/" for x in length)
+				assert len(note) in (2,3)
+				char, transpose = note[:2]
+				sharp = bool(note[2:3] == "#")
+				assert char in "abcdefg"
+				assert transpose.isdigit()
+				transpose = int(transpose)
+				start = eval(start)
+				length = eval(length)
+
+				note_code = transpose*12 + "c d ef g a b".index(char)
+
+				downs.append((start, note_code))
+				ups.append((start + length, note_code))
+
+		assert len(downs) == len(ups)
+		downs.sort()
+		ups.sort()
+
+		sample_count = create_variable()
+		init_code.append(f"{sample_count} = 0")
+		process_code.append(f"global {sample_count}")
+
+		def write_events(events, midi_code):
+			variable = create_variable()
+			init_code.append(f"{variable} = [")
+			init_code.extend(
+				",".join(
+					f"({start},{note})"
+					for (start, note) in events[i*10:i*10+10]
+				) + ("," if i*10+10 < len(events) else "")
+				for i in range(len(events)//10 + 1)
+			)
+			init_code.append(f"]")
+
+			index = create_variable()  # next position to evaluate to play
+			init_code.append(f"{index} = 0")
+			process_code.append(f"global {index}")
+			process_code.append(f"while {index} < {len(events)} and {variable}[{index}][0] <= {sample_count} / {node_context.sample_rate}:")
+			process_code.append(f"	{node.output._variable}.voices[0].append((0,{midi_code}))")
+			process_code.append(f"	{node.output._variable}.voices[0].append((0,{variable}[{index}][1]))")
+			process_code.append(f"	{node.output._variable}.voices[0].append((0,127))")
+			process_code.append(f"	{index} += 1")
+
+		# Always clear our output buffer before adding data to it
+		process_code.append(f"{node.output._variable}.voices[0].clear()")
+
+		# Key down events generator
+		write_events(downs, 144)
+
+		# Key up events generator
+		write_events(ups, 128)
+
+		process_code.append(f"{sample_count} += {node_context.frame_count}")
+
 	else:
 		unsupported(node)
 
@@ -849,7 +917,7 @@ def numpy_time(
 		sample_clock = create_variable()
 		init_code.append(f"{sample_clock} = 0")
 		init_code.append(f"{node.output._variable} = Signal(voices={{0:np.zeros({node_context.frame_count})}})")
-	
+
 		process_code.append(f"global {sample_clock}")
 		process_code.append(
 			f"{node.output._variable}.voices[0] = "
@@ -1167,6 +1235,11 @@ def compile_to_numpy(
 
 
 def introduce(init_code: list[str], lines: list[str]):
+	"""
+	Introduces method only once
+
+	METHOD_NAME is replaced by the new name of the method.
+	"""
 	if lines in introduce.lines.values():
 		return next(k for k,v in introduce.lines.items() if v == lines) # Already defined
 
