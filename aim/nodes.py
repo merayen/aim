@@ -192,6 +192,18 @@ class print(OutNode):
 
 
 @node
+class put(OutNode):
+	label: Any = None
+	input: Any = None
+
+
+@node
+class get(Node):
+	label: Any = None
+	output = Outlet(DataType.SIGNAL)  # The format changes dynamically
+
+
+@node
 class midi(Node):
 	"""Read midi from connected device"""
 	device_name: Any = None

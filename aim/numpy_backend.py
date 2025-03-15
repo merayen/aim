@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from aim.nodes import (
 	Node, create_variable, Outlet, Context, DataType,
 	delay, sine, out, CompilationContext,
@@ -10,6 +10,7 @@ from typing import Any
 class ModuleContext:
 	frame_count: int  # Samples per buffer
 	sample_rate: int
+	pipes: set[str] = field(default_factory=lambda: set())
 
 
 def _oscillator_clock(
@@ -205,6 +206,72 @@ def numpy_print(
 	process_code.append(f"for {voice_id} in {voices} - set({node.input._variable}.voices):")
 	process_code.append(f"	{voices}.remove({voice_id})")
 	process_code.append(f"	" + debug_print(node, f'f"-voice={{{voice_id}}}, count={{len({voices})}}"'))
+
+
+def numpy_put(
+	module_context: ModuleContext,
+	node: Node,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	if node.input is None:
+		return
+
+	if not node.label:
+		unsupported(node)
+
+	if not isinstance(node.label, str):
+		unsupported(node)
+	
+	label_escaped = node.label.replace("\"", "\\\"")
+
+	if node.label in module_context.pipes:
+		raise Exception("Pipe with the name '{node.label}' already exists.")
+
+	module_context.pipes.add(node.label)
+
+	if isinstance(node.input, Outlet) and node.input.datatype == DataType.SIGNAL:
+		init_code.append(f"piping_node_pipes[\"{label_escaped}\"] = {{}}")
+
+		label = create_variable()
+		voice_id = create_variable()
+		voice = create_variable()
+
+		# Copy input data to our internal buffer
+		process_code.append(f"for {voice_id}, {voice} in {node.input._variable}.voices.items():")
+		process_code.append(f"	piping_node_pipes[\"{label_escaped}\"][{voice_id}] = {voice} * 1")
+
+		# Remove dead voices
+		process_code.append(f"for {voice_id} in set(piping_node_pipes[\"{label_escaped}\"]) - set({node.input._variable}.voices):")
+		process_code.append(f"	piping_node_pipes[\"{label_escaped}\"].pop({voice_id}, None)")
+	else:
+		unsupported(node)
+
+
+def numpy_get(
+	module_context: ModuleContext,
+	node: Node,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	if not isinstance(node.label, str):
+		unsupported(node)
+
+	label_escaped = node.label.replace("\"", "\\\"")
+
+	init_code.append(f"{node.output._variable} = Signal()")
+
+	# Send last buffers data out
+	voice = create_variable()
+	voice_id = create_variable()
+	process_code.append(f"if \"{label_escaped}\" in piping_node_pipes:")
+	# Remove voices that has disappeared in our buffer
+	process_code.append(f"	for {voice_id} in set({node.output._variable}.voices) - set(piping_node_pipes[\"{label_escaped}\"]):")
+	process_code.append(f"		{node.output._variable}.voices.pop({voice_id}, None)")
+
+	process_code.append(f"	for {voice_id}, {voice} in piping_node_pipes[\"{label_escaped}\"].items():")
+	process_code.append(f"		{node.output._variable}.voices[{voice_id}] = {voice}")
+
 
 
 def numpy_sine(
@@ -688,7 +755,7 @@ def numpy_score(
 				start = eval(start)
 				length = eval(length)
 
-				note_code = transpose*12 + "c d ef g a b".index(char)
+				note_code = 12 + transpose*12 + "c d ef g a b".index(char) + int(sharp)
 
 				downs.append((start, note_code))
 				ups.append((start + length, note_code))
