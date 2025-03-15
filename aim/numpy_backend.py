@@ -7,13 +7,13 @@ from typing import Any
 
 
 @dataclass
-class NodeContext:
+class ModuleContext:
 	frame_count: int  # Samples per buffer
 	sample_rate: int
 
 
 def _oscillator_clock(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: Node,
 	init_code: list[str],
 	process_code: list[str],
@@ -36,7 +36,7 @@ def _oscillator_clock(
 		process_code.append(f"global {clock}")
 		process_code.append(
 			f"{clock_array} = {clock} + "
-			f"np.cumsum(_ONES * ({node.frequency} / {node_context.sample_rate}))"
+			f"np.cumsum(_ONES * ({node.frequency} / {module_context.sample_rate}))"
 		)
 		process_code.append(f"{node.output._variable}.voices[0] = {func}")
 		process_code.append(f"{clock} = {clock_array}[-1] % 1")
@@ -64,7 +64,7 @@ def _oscillator_clock(
 
 			voice = create_variable()
 			process_code.append(f"for {voice_id}, {voice} in {node.frequency._variable}.voices.items():")
-			process_code.append(f"	{clock_array} = {clock}[{voice_id}] + np.cumsum(_ONES * ({voice} / {node_context.sample_rate}))")
+			process_code.append(f"	{clock_array} = {clock}[{voice_id}] + np.cumsum(_ONES * ({voice} / {module_context.sample_rate}))")
 			process_code.append(f"	{clock}[{voice_id}] = {clock_array}[-1] % 1")
 			process_code.append(f"	{node.output._variable}.voices[{voice_id}] = {func}")
 
@@ -116,7 +116,7 @@ def _oscillator_clock(
 			process_code.append(f"		elif {packet}[{voice_id}][0] == 128 and {voice_id} in {keys} and {packet}[{voice_id}][1] == {keys}[{voice_id}]:")  # Key up
 			process_code.append(f"			{amplitudes}[{voice_id}] = 0")
 
-			process_code.append(f"	{clock_array} = ({clock}[{voice_id}] + np.cumsum(_ONES * ({frequencies}[{voice_id}] / {node_context.sample_rate})))")
+			process_code.append(f"	{clock_array} = ({clock}[{voice_id}] + np.cumsum(_ONES * ({frequencies}[{voice_id}] / {module_context.sample_rate})))")
 			process_code.append(f"	{clock}[{voice_id}] = {clock_array}[-1] % 1")  # Save position for next tim)
 			process_code.append(f"	{node.output._variable}.voices[{voice_id}] = ({func}) * {amplitudes}[{voice_id}]")
 
@@ -139,7 +139,7 @@ def _oscillator_clock(
 
 
 def numpy_midi(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: Node,
 	init_code: list[str],
 	process_code: list[str],
@@ -175,7 +175,7 @@ def numpy_midi(
 
 
 def numpy_print(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: Node,
 	init_code: list[str],
 	process_code: list[str],
@@ -202,21 +202,19 @@ def numpy_print(
 	else:
 		unsupported(node)
 
-	disposed_voices = create_variable()
-	process_code.append(f"{disposed_voices} = {voices} - set({node.input._variable}.voices)")
-	process_code.append(f"for {voice_id} in {disposed_voices}:")
+	process_code.append(f"for {voice_id} in {voices} - set({node.input._variable}.voices):")
 	process_code.append(f"	{voices}.remove({voice_id})")
 	process_code.append(f"	" + debug_print(node, f'f"-voice={{{voice_id}}}, count={{len({voices})}}"'))
 
 
 def numpy_sine(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: sine,
 	init_code: list[str],
 	process_code: list[str],
 ) -> None:
 	_oscillator_clock(
-		node_context,
+		module_context,
 		node,
 		init_code,
 		process_code,
@@ -225,14 +223,14 @@ def numpy_sine(
 
 
 def numpy_square(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: sine,
 	init_code: list[str],
 	process_code: list[str],
 ) -> None:
 	if node.duty is None:
 		_oscillator_clock(
-			node_context,
+			module_context,
 			node,
 			init_code,
 			process_code,
@@ -240,7 +238,7 @@ def numpy_square(
 		)
 	elif isinstance(node.duty, (int, float)):
 		_oscillator_clock(
-			node_context,
+			module_context,
 			node,
 			init_code,
 			process_code,
@@ -249,7 +247,7 @@ def numpy_square(
 	elif isinstance(node.duty, Outlet):
 		if node.duty.datatype == DataType.SIGNAL:
 			_oscillator_clock(
-				node_context,
+				module_context,
 				node,
 				init_code,
 				process_code,
@@ -262,13 +260,13 @@ def numpy_square(
 
 
 def numpy_saw(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: sine,
 	init_code: list[str],
 	process_code: list[str],
 ) -> None:
 	_oscillator_clock(
-		node_context,
+		module_context,
 		node,
 		init_code,
 		process_code,
@@ -277,7 +275,7 @@ def numpy_saw(
 
 
 def numpy_noise(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: sine,
 	init_code: list[str],
 	process_code: list[str],
@@ -288,7 +286,7 @@ def numpy_noise(
 		process_code.extend(
 			[
 				"for voice_id in {node.voices._variable}.voices:",
-					f"	{node.output._variable}.voices[0] = random.random(({node_context.frame_count},), dtype='float32') * 2 - 1",
+					f"	{node.output._variable}.voices[0] = random.random(({module_context.frame_count},), dtype='float32') * 2 - 1",
 			]
 		)
 
@@ -301,12 +299,12 @@ def numpy_noise(
 		)
 	else:
 		process_code.append(
-			f"{node.output._variable}.voices[0] = random.random(({node_context.frame_count},), dtype='float32') * 2 - 1"
+			f"{node.output._variable}.voices[0] = random.random(({module_context.frame_count},), dtype='float32') * 2 - 1"
 		)
 
 
 def numpy_random(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: Node,
 	init_code: list[str],
 	process_code: list[str],
@@ -339,7 +337,7 @@ def numpy_random(
 
 
 def _numpy_math(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: Node,
 	init_code: list[str],
 	process_code: list[str],
@@ -358,7 +356,7 @@ def _numpy_math(
 		# Number never changes, sum it only once
 		init_code.append(
 				f"{node.output._variable} = Signal(voices={{0:"
-				f"np.zeros({node_context.frame_count}) + {eval('node.in0'+op+'node.in1')}}})"
+				f"np.zeros({module_context.frame_count}) + {eval('node.in0'+op+'node.in1')}}})"
 		)
 	elif isinstance(node.in0, Outlet) and isinstance(node.in1, Outlet):
 		init_code.append(f"{node.output._variable} = Signal()")
@@ -434,7 +432,7 @@ numpy_lt = _numpy_math
 
 
 def numpy_mix(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: out,
 	init_code: list[str],
 	process_code: list[str],
@@ -497,12 +495,12 @@ def numpy_mix(
 
 
 def numpy_downmix(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: Node,
 	init_code: list[str],
 	process_code: list[str],
 ) -> None:
-	init_code.append(f"{node.output._variable} = Signal(voices={{0:np.zeros({node_context.frame_count})}})")
+	init_code.append(f"{node.output._variable} = Signal(voices={{0:np.zeros({module_context.frame_count})}})")
 
 	if node.input is None:
 		return
@@ -519,7 +517,7 @@ def numpy_downmix(
 
 
 def numpy_slewrate(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: out,
 	init_code: list[str],
 	process_code: list[str],
@@ -528,7 +526,7 @@ def numpy_slewrate(
 
 
 def numpy_trigger(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: out,
 	init_code: list[str],
 	process_code: list[str],
@@ -543,7 +541,7 @@ def numpy_trigger(
 		[
 			"import numba",
 			"@numba.njit",
-			"def METHOD_NAME(current, input_array, output_array, start_array, stop_array):",
+			"def UNIQUE_NAME(current, input_array, output_array, start_array, stop_array):",
 			"	assert len(input_array) == len(output_array) == len(start_array) == len(stop_array)",
 			"",
 			"	for i in range(len(input_array)):",
@@ -559,15 +557,15 @@ def numpy_trigger(
 	if isinstance(node.value, Outlet):
 		if isinstance(node.on, (int, float)):
 			on = create_variable()
-			init_code.append(f"{on} = np.zeros({node_context.frame_count}) + {node.on}")
+			init_code.append(f"{on} = np.zeros({module_context.frame_count}) + {node.on}")
 
 		if isinstance(node.off, (int, float)):
 			off = create_variable()
-			init_code.append(f"{off} = np.zeros({node_context.frame_count}) + {node.off}")
+			init_code.append(f"{off} = np.zeros({module_context.frame_count}) + {node.off}")
 
 		process_code.append(f"for voice_id, voice in {node.value._variable}.voices.items():")
 		process_code.append(f"	if voice_id not in {node.output._variable}.voices:")
-		process_code.append(f"		{node.output._variable}.voices[voice_id] = np.zeros({node_context.frame_count})")
+		process_code.append(f"		{node.output._variable}.voices[voice_id] = np.zeros({module_context.frame_count})")
 		process_code.append(f"	{current_value}[voice_id] = {method}(")
 		process_code.append(f"		{current_value}[voice_id],")
 		process_code.append("		voice,")
@@ -602,7 +600,7 @@ def numpy_trigger(
 
 
 def numpy_clip(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: out,
 	init_code: list[str],
 	process_code: list[str],
@@ -628,7 +626,7 @@ def numpy_clip(
 
 
 def numpy_frequency(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: out,
 	init_code: list[str],
 	process_code: list[str],
@@ -663,7 +661,7 @@ def numpy_frequency(
 
 
 def numpy_score(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: out,
 	init_code: list[str],
 	process_code: list[str],
@@ -718,10 +716,10 @@ def numpy_score(
 			index = create_variable()  # next position to evaluate to play
 			init_code.append(f"{index} = 0")
 			process_code.append(f"global {index}")
-			process_code.append(f"while {index} < {len(events)} and {variable}[{index}][0] <= {sample_count} / {node_context.sample_rate}:")
-			process_code.append(f"	{node.output._variable}.voices[0].append((0,{midi_code}))")
+			process_code.append(f"while {index} < {len(events)} and {variable}[{index}][0] <= {sample_count} / {module_context.sample_rate}:")
+			process_code.append(f"	{node.output._variable}.voices[0].append((0,{midi_code}))")  # TODO merayen correct timings
 			process_code.append(f"	{node.output._variable}.voices[0].append((0,{variable}[{index}][1]))")
-			process_code.append(f"	{node.output._variable}.voices[0].append((0,127))")
+			process_code.append(f"	{node.output._variable}.voices[0].append((0,127))")  # TODO merayen need amplitude value
 			process_code.append(f"	{index} += 1")
 
 		# Always clear our output buffer before adding data to it
@@ -733,14 +731,14 @@ def numpy_score(
 		# Key up events generator
 		write_events(ups, 128)
 
-		process_code.append(f"{sample_count} += {node_context.frame_count}")
+		process_code.append(f"{sample_count} += {module_context.frame_count}")
 
 	else:
 		unsupported(node)
 
 
 def numpy_unison(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: out,
 	init_code: list[str],
 	process_code: list[str],
@@ -805,7 +803,7 @@ def numpy_unison(
 
 
 def numpy_polyphonic(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: out,
 	init_code: list[str],
 	process_code: list[str],
@@ -873,7 +871,7 @@ def numpy_polyphonic(
 
 
 def numpy_delay(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: delay,
 	init_code: list[str],
 	process_code: list[str],
@@ -885,7 +883,7 @@ def numpy_delay(
 
 
 def numpy_time(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: delay,
 	init_code: list[str],
 	process_code: list[str],
@@ -904,9 +902,9 @@ def numpy_time(
 		process_code.append(f"		{sample_clocks}[{voice_id}] = 0")
 		process_code.append(
 			f"	{node.output._variable}.voices[{voice_id}] = "
-			f"	{sample_clocks}[{voice_id}] / {node_context.sample_rate} + np.cumsum(_ONES / {node_context.sample_rate})"
+			f"	{sample_clocks}[{voice_id}] / {module_context.sample_rate} + np.cumsum(_ONES / {module_context.sample_rate})"
 		)
-		process_code.append(f"	{sample_clocks}[{voice_id}] += {node_context.frame_count}")
+		process_code.append(f"	{sample_clocks}[{voice_id}] += {module_context.frame_count}")
 
 		# Remove voices that has disappeared on the input
 		process_code.append(f"for {voice_id} in list({node.output._variable}.voices):")
@@ -916,20 +914,20 @@ def numpy_time(
 	elif not node.voice_trigger:
 		sample_clock = create_variable()
 		init_code.append(f"{sample_clock} = 0")
-		init_code.append(f"{node.output._variable} = Signal(voices={{0:np.zeros({node_context.frame_count})}})")
+		init_code.append(f"{node.output._variable} = Signal(voices={{0:np.zeros({module_context.frame_count})}})")
 
 		process_code.append(f"global {sample_clock}")
 		process_code.append(
 			f"{node.output._variable}.voices[0] = "
-			f"{sample_clock} / {node_context.sample_rate} + np.cumsum(_ONES / {node_context.sample_rate})"
+			f"{sample_clock} / {module_context.sample_rate} + np.cumsum(_ONES / {module_context.sample_rate})"
 		)
-		process_code.append(f"{sample_clock} += {node_context.frame_count}")
+		process_code.append(f"{sample_clock} += {module_context.frame_count}")
 	else:
 		unsupported(node)
 
 
 def numpy_audiofile(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: out,
 	init_code: list[str],
 	process_code: list[str],
@@ -976,27 +974,27 @@ def numpy_audiofile(
 		for channel_index in node.channel_paths:
 			process_code.append(
 				f"	{node.output._variable}.voices[{channel_index}] = "
-				f"{audio_data}[{channel_index}][{playback_position}:{playback_position}+{node_context.frame_count}]"
+				f"{audio_data}[{channel_index}][{playback_position}:{playback_position}+{module_context.frame_count}]"
 			)
 
 			# When at the end of the audio signal, pad with silence
 			process_code.extend(
 				[
-					f"	if len({node.output._variable}.voices[{channel_index}]) != {node_context.frame_count}:",
+					f"	if len({node.output._variable}.voices[{channel_index}]) != {module_context.frame_count}:",
 					f"		{node.output._variable}.voices[{channel_index}] = "
-					f"np.pad({node.output._variable}.voices[{channel_index}], pad_width=(0,{node_context.frame_count}-len({node.output._variable}.voices[{channel_index}])))",
+					f"np.pad({node.output._variable}.voices[{channel_index}], pad_width=(0,{module_context.frame_count}-len({node.output._variable}.voices[{channel_index}])))",
 				]
 			)
 
 		# Increase the playback position, if not at the end already
-		process_code.append(f"	{playback_position} += {node_context.frame_count}")
+		process_code.append(f"	{playback_position} += {module_context.frame_count}")
 	else:
 		# TODO merayen how to support multiple voices of this node that already creates voices? stack them?
 		unsupported(node)
 
 
 def numpy_oscilloscope(
-	node_context: NodeContext,
+	module_context: ModuleContext,
 	node: out,
 	init_code: list[str],
 	process_code: list[str],
@@ -1030,7 +1028,7 @@ def numpy_oscilloscope(
 
 		if isinstance(node.time_div, (int, float)):
 			# Look for new voices and create buffers for them
-			buffer_size = int(node_context.sample_rate * max(1E-4, min(1, node.time_div)))
+			buffer_size = int(module_context.sample_rate * max(1E-4, min(1, node.time_div)))
 			process_code.append(f"for voice_id in set({node.value._variable}.voices) - set({buffer}):")
 			process_code.append(f"	{clock}[voice_id] = 0")
 			process_code.append(f"	{waiting_period}[voice_id] = 0")
@@ -1071,8 +1069,8 @@ def numpy_oscilloscope(
 			# Search for trigger_high value if not timed out or already found
 			process_code.append(f"	if {trigger_low}[voice_id] != {2**63-1} and {trigger_high}[voice_id] == {2**63-1}:")
 			trigger_high_offset = create_variable()
-			process_code.append(f"		{trigger_high_offset} = max(0, {trigger_low}[voice_id] - {clock}[voice_id]) if {trigger_low}[voice_id] < {node_context.frame_count} + {clock}[voice_id] else 0")
-			process_code.append(f"		assert 0 <= {trigger_high_offset} < {node_context.frame_count}, {trigger_high_offset}")
+			process_code.append(f"		{trigger_high_offset} = max(0, {trigger_low}[voice_id] - {clock}[voice_id]) if {trigger_low}[voice_id] < {module_context.frame_count} + {clock}[voice_id] else 0")
+			process_code.append(f"		assert 0 <= {trigger_high_offset} < {module_context.frame_count}, {trigger_high_offset}")
 			process_code.append(f"		{trigger_index} = np.argmax(voice[{trigger_high_offset}:] >= {node.trigger})")
 			process_code.append(f"		if {trigger_index} > 0 or voice[{trigger_high_offset}] >= {node.trigger}:")
 			process_code.append(f"			{trigger_high}[voice_id] = {trigger_index} + {clock}[voice_id] + {trigger_high_offset}")
@@ -1094,10 +1092,10 @@ def numpy_oscilloscope(
 			size = create_variable()
 			write_stop = create_variable()
 			process_code.append(f"	{read_offset} = max(0, {trigger_high}[voice_id] - {clock}[voice_id]) if {samples_filled}[voice_id] == 0 else 0")
-			process_code.append(f"	{size} = min({buffer_size} - {samples_filled}[voice_id], {node_context.frame_count} - {read_offset})")
+			process_code.append(f"	{size} = min({buffer_size} - {samples_filled}[voice_id], {module_context.frame_count} - {read_offset})")
 			process_code.append(f"	{write_offset} = {samples_filled}[voice_id]")
 			process_code.append(f"	{write_stop} = {samples_filled}[voice_id] + {size}")
-			process_code.append(f"	assert -1 < {size} <= {node_context.frame_count}, {size}")
+			process_code.append(f"	assert -1 < {size} <= {module_context.frame_count}, {size}")
 			process_code.append(f"	assert -1 < {write_offset} < {buffer_size}, {write_offset}")
 			process_code.append(f"	assert {write_stop} > -1, {write_stop}")
 			process_code.append(
@@ -1118,7 +1116,7 @@ def numpy_oscilloscope(
 			)
 			process_code.append(f"	{samples_filled}[voice_id] = 0")
 			process_code.append(f"	{clock}[voice_id] = 0")
-			process_code.append(f"	{waiting_period}[voice_id] = {clock}[voice_id] + {round(node_context.sample_rate * (1/fps) - buffer_size)}")
+			process_code.append(f"	{waiting_period}[voice_id] = {clock}[voice_id] + {round(module_context.sample_rate * (1/fps) - buffer_size)}")
 			process_code.append(f"	{trigger_high}[voice_id] = {2**63-1}")
 			process_code.append(f"	{trigger_low}[voice_id] = {2**63-1}")
 		else:
@@ -1126,13 +1124,13 @@ def numpy_oscilloscope(
 
 		# Update clock
 		process_code.append(f"for voice_id in {buffer}:")
-		process_code.append(f"	{clock}[voice_id] += {node_context.frame_count}")
+		process_code.append(f"	{clock}[voice_id] += {module_context.frame_count}")
 
 	else:
 		unsupported(node)
 
 
-def numpy_out(node_context: NodeContext, node: out, init_code: list[str], process_code: list[str]) -> None:
+def numpy_out(module_context: ModuleContext, node: out, init_code: list[str], process_code: list[str]) -> None:
 	assert node.name
 	assert "'" not in node.name
 
@@ -1142,7 +1140,7 @@ def numpy_out(node_context: NodeContext, node: out, init_code: list[str], proces
 		process_code.extend(
 			[
 				f"output['{node.name}'] = Signal(",
-				f"	voices=np.zeros({node_context.frame_count}, dtype='float32') + {node.input}",
+				f"	voices=np.zeros({module_context.frame_count}, dtype='float32') + {node.input}",
 				")",
 			]
 		)
@@ -1189,6 +1187,7 @@ def compile_to_numpy(
 		"	voices: dict[int, list[tuple[int, int]]] = field(default_factory=lambda:{})",
 		"	raw: list[int, bytes] = field(default_factory=lambda:[])",  # All data. For still transferring pitch wheel data etc.
 		"random = np.random.default_rng()",
+		"piping_node_pipes = {}",
 	]
 
 	process_code = [
@@ -1199,7 +1198,7 @@ def compile_to_numpy(
 		"output = {}",
 	]
 
-	node_context = NodeContext(
+	module_context = ModuleContext(
 		frame_count=frame_count,
 		sample_rate=sample_rate,
 	)
@@ -1215,7 +1214,7 @@ def compile_to_numpy(
 
 		init_code.append(f"# {node.__class__.__name__}")
 		process_code.append(f"# {node.__class__.__name__}")
-		func(node_context, node, init_code, process_code)
+		func(module_context, node, init_code, process_code)
 
 	# Emit statistic data to stdout and return data
 	process_code.extend(
@@ -1238,18 +1237,18 @@ def introduce(init_code: list[str], lines: list[str]):
 	"""
 	Introduces method only once
 
-	METHOD_NAME is replaced by the new name of the method.
+	UNIQUE_NAME is replaced by the new name of the method.
 	"""
 	if lines in introduce.lines.values():
 		return next(k for k,v in introduce.lines.items() if v == lines) # Already defined
 
-	method_name = create_variable()
+	unique_name = create_variable()
 
-	init_code.extend([x.replace("METHOD_NAME", method_name) for x in lines])
+	init_code.extend([x.replace("UNIQUE_NAME", unique_name) for x in lines])
 
-	introduce.lines[method_name] = lines
+	introduce.lines[unique_name] = lines
 
-	return method_name
+	return unique_name
 introduce.lines = {}
 
 
