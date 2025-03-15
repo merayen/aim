@@ -755,7 +755,7 @@ def numpy_score(
 				start = eval(start)
 				length = eval(length)
 
-				note_code = 12 + transpose*12 + "c d ef g a b".index(char) + int(sharp)
+				note_code = 12 + transpose*12 + "a bc d ef g".index(char) + int(sharp)
 
 				downs.append((start, note_code))
 				ups.append((start + length, note_code))
@@ -923,7 +923,7 @@ def numpy_polyphonic(
 	# Process accumulated data
 	new_voice_id = create_variable()
 	process_code.append(f"	if len({packets}) == 3:")  # 3 bytes package handling
-	process_code.append(f"		if {packets}[0][1] == 144 and len({node.input._variable}.voices) + 1 < {node.max_voices}:")  # Key down, spawn a new voice
+	process_code.append(f"		if {packets}[0][1] == 144 and {packets}[1][1] not in {pushed_keys} and len({node.input._variable}.voices) + 1 < {node.max_voices}:")  # Key down, spawn a new voice
 	process_code.append(f"			{new_voice_id} = create_voice()")
 	process_code.append(f"			{active_voice_ids}.add({new_voice_id})")
 	process_code.append(f"			{node.midi._variable}.voices[{new_voice_id}] = {states} + {packets}")
