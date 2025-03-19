@@ -419,6 +419,8 @@ def _numpy_math(
 		lt: "<",
 	}[node.__class__]
 
+	voice_id = create_variable()
+
 	if isinstance(node.in0, (int, float)) and isinstance(node.in1, (int, float)):
 		# Number never changes, sum it only once
 		init_code.append(
@@ -430,16 +432,28 @@ def _numpy_math(
 		if node.in0.datatype == DataType.SIGNAL and node.in1.datatype == DataType.SIGNAL:
 			process_code.extend(
 				[
-					f"for voice_id in set({node.in0._variable}.voices.keys()).union({node.in1._variable}.voices.keys()):",
-					f"	{node.output._variable}.voices[voice_id] = ({node.in0._variable}.voices.get(voice_id, _SILENCE) {op} {node.in1._variable}.voices.get(voice_id, _SILENCE)) * 1",
+					# Experimental, complex voice 0 handling we don't know if we want to continue or not
+					f"if list({node.in0._variable}.voices) == [0] and list({node.in1._variable}.voices) == [0]:",
+					f"	{node.output._variable}.voices[0] = ({node.in0._variable}.voices[0] {op} {node.in1._variable}.voices[0]) * 1",
+					f"elif list({node.in0._variable}.voices) == [0]:",
+					f"	for {voice_id} in {node.in1._variable}.voices:",
+					f"		{node.output._variable}.voices[{voice_id}] = ({node.in0._variable}.voices[0] {op} {node.in1._variable}.voices[{voice_id}]) * 1",
+					f"elif list({node.in1._variable}.voices) == [0]:",
+					f"	for {voice_id} in {node.in0._variable}.voices:",
+					f"		{node.output._variable}.voices[{voice_id}] = ({node.in0._variable}.voices[{voice_id}] {op} {node.in1._variable}.voices[0]) * 1",
+					f"else:",
+					f"	assert 0 not in {node.in0._variable}.voices",
+					f"	assert 0 not in {node.in1._variable}.voices",
+					f"	for {voice_id} in set({node.in0._variable}.voices).union({node.in1._variable}.voices):",
+					f"		{node.output._variable}.voices[{voice_id}] = ({node.in0._variable}.voices.get({voice_id}, _SILENCE) {op} {node.in1._variable}.voices.get({voice_id}, _SILENCE)) * 1",
 				]
 			)
 
 			# Remove voices that are extinct
 			process_code.extend(
 				[
-					f"for voice_id in set({node.output._variable}.voices) - (set({node.in0._variable}.voices) | set({node.in1._variable}.voices)):",
-					f"	{node.output._variable}.voices.pop(voice_id)",
+					f"for {voice_id} in set({node.output._variable}.voices) - (set({node.in0._variable}.voices) | set({node.in1._variable}.voices)):",
+					f"	{node.output._variable}.voices.pop({voice_id})",
 				]
 			)
 
@@ -451,16 +465,16 @@ def _numpy_math(
 		if node.in1.datatype == DataType.SIGNAL:
 			process_code.extend(
 				[
-					f"for voice_id in {node.in1._variable}.voices:",
-					f"	{node.output._variable}.voices[voice_id] = ({node.in0} {op} {node.in1._variable}.voices.get(voice_id, _SILENCE)) * 1",
+					f"for {voice_id} in {node.in1._variable}.voices:",
+					f"	{node.output._variable}.voices[{voice_id}] = ({node.in0} {op} {node.in1._variable}.voices.get({voice_id}, _SILENCE)) * 1",
 				]
 			)
 
 			# Remove voices that are extinct
 			process_code.extend(
 				[
-					f"for voice_id in set({node.output._variable}.voices) - set({node.in1._variable}.voices):",
-					f"	{node.output._variable}.voices.pop(voice_id)",
+					f"for {voice_id} in set({node.output._variable}.voices) - set({node.in1._variable}.voices):",
+					f"	{node.output._variable}.voices.pop({voice_id})",
 				]
 			)
 		else:
@@ -471,16 +485,16 @@ def _numpy_math(
 		if node.in0.datatype == DataType.SIGNAL:
 			process_code.extend(
 				[
-					f"for voice_id in {node.in0._variable}.voices:",
-					f"	{node.output._variable}.voices[voice_id] = ({node.in0._variable}.voices.get(voice_id, _SILENCE) {op} {node.in1}) * 1",
+					f"for {voice_id} in {node.in0._variable}.voices:",
+					f"	{node.output._variable}.voices[{voice_id}] = ({node.in0._variable}.voices.get({voice_id}, _SILENCE) {op} {node.in1}) * 1",
 				]
 			)
 
 			# Remove voices that are extinct
 			process_code.extend(
 				[
-					f"for voice_id in set({node.output._variable}.voices) - set({node.in0._variable}.voices):",
-					f"	{node.output._variable}.voices.pop(voice_id)",
+					f"for {voice_id} in set({node.output._variable}.voices) - set({node.in0._variable}.voices):",
+					f"	{node.output._variable}.voices.pop({voice_id})",
 				]
 			)
 		else:
@@ -725,6 +739,24 @@ def numpy_frequency(
 		process_code.append(f"		{node.output._variable}.voices.pop({voice_id})")
 	else:
 		unsupported(node)
+
+
+def numpy_one(
+	module_context: ModuleContext,
+	node: Node,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	if node.input is None or isinstance(node.input, (int, float)):
+		init_code.append(f"{node.output._variable} = Signal(voices={{0: _ONES}})")
+	
+	elif isinstance(node.input, Outlet):
+		voice_id = create_variable()
+		init_code.append(f"{node.output._variable} = Signal()")
+		process_code.append(f"for {voice_id} in {node.input._variable}.voices:")
+		process_code.append(f"	{node.output._variable}.voices[{voice_id}] = _ONES")
+		process_code.append(f"for {voice_id} in set({node.output._variable}.voices) - set({node.input._variable}.voices):")
+		process_code.append(f"	{node.output._variable}.voices.pop({voice_id}, None)")
 
 
 def numpy_score(

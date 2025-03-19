@@ -376,6 +376,13 @@ class frequency(Node):
 
 
 @node
+class one(Node):
+	input: Any = None
+
+	output = Outlet(DataType.SIGNAL)
+
+
+@node
 class dB(Node):
 	"""Convert a dB number to a linear float.
 
