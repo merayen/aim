@@ -456,6 +456,14 @@ class spawn(Node):
 
 
 @node
+class hold(Node):
+	input: Any = None
+	condition: Any = None
+
+	output = Outlet(DataType.NONE)  # The format changes dynamically
+
+
+@node
 class delay(Node):
 	"""
 	Delays everything

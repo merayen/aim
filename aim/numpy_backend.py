@@ -222,7 +222,7 @@ def numpy_put(
 
 	if not isinstance(node.label, str):
 		unsupported(node)
-	
+
 	label_escaped = node.label.replace("\"", "\\\"")
 
 	if node.label in module_context.pipes:
@@ -749,7 +749,7 @@ def numpy_one(
 ) -> None:
 	if node.input is None or isinstance(node.input, (int, float)):
 		init_code.append(f"{node.output._variable} = Signal(voices={{0: _ONES}})")
-	
+
 	elif isinstance(node.input, Outlet):
 		voice_id = create_variable()
 		init_code.append(f"{node.output._variable} = Signal()")
@@ -917,7 +917,7 @@ def numpy_spawn(
 ) -> None:
 	if node.input is None:
 		return
-	
+
 	if isinstance(node.input, Outlet) and node.input.datatype == DataType.SIGNAL:
 		x = create_variable()
 		triggering = create_variable()
@@ -936,6 +936,34 @@ def numpy_spawn(
 		process_code.append(f"			{triggering} = 0")
 	else:
 		unsupported(node)
+
+
+def numpy_hold(
+	module_context: ModuleContext,
+	node: out,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	if node.input is None:
+		return
+
+	if isinstance(node.input, Outlet) and node.input.datatype in (DataType.SIGNAL, DataType.MIDI):
+		node.output.datatype = node.input.datatype
+		voice_id = create_variable()
+		voice = create_variable()
+		init_code.append(f"{node.output._variable} = Signal()")
+		process_code.append(f"for {voice_id}, {voice} in {node.input._variable}.voices.items():")
+		process_code.append(f"	{node.output._variable}.voices[{voice_id}] = {voice}")
+		process_code.append(f"for {voice_id} in set({node.output._variable}.voices) - set({node.input._variable}.voices):")
+		if isinstance(node.condition, Outlet) and node.condition.datatype == DataType.SIGNAL:
+			process_code.append(f"	if {voice_id} not in {node.condition._variable}.voices or ({node.condition._variable}.voices[{voice_id}] <= 0).any():") # TODO merayen timing, delay to next process buffer
+			process_code.append(f"		{node.output._variable}.voices.pop({voice_id})")
+			process_code.append(f"	else:")
+			process_code.append(f"		{node.output._variable}.voices[{voice_id}] = _SILENCE")
+		elif node.condition is None:
+			process_code.append(f"	{node.output._variable}.voices.pop({voice_id})")
+		else:
+			unsupported(node)
 
 
 def numpy_polyphonic(
