@@ -909,6 +909,35 @@ def numpy_unison(
 		unsupported(node)
 
 
+def numpy_spawn(
+	module_context: ModuleContext,
+	node: out,
+	init_code: list[str],
+	process_code: list[str],
+) -> None:
+	if node.input is None:
+		return
+	
+	if isinstance(node.input, Outlet) and node.input.datatype == DataType.SIGNAL:
+		x = create_variable()
+		triggering = create_variable()
+		init_code.append(f"{node.output._variable} = Signal()")
+		init_code.append(f"{triggering} = 0")
+		process_code.append(f"global {triggering}")
+		process_code.append(f"if 0 in {node.input._variable}.voices:")
+		process_code.append(f"	if ({node.input._variable}.voices[0] <= 0).any():")
+		process_code.append(f"		{node.output._variable}.voices.clear()")
+		process_code.append(f"	for {x} in {node.input._variable}.voices[0]:")  # XXX numba it?
+		process_code.append(f"		if {x} > 0:")
+		process_code.append(f"			if not {triggering}:")
+		process_code.append(f"				{node.output._variable}.voices[create_voice()] = _ONES")  # TODO merayen timing
+		process_code.append(f"				{triggering} = 1")
+		process_code.append(f"		else:")
+		process_code.append(f"			{triggering} = 0")
+	else:
+		unsupported(node)
+
+
 def numpy_polyphonic(
 	module_context: ModuleContext,
 	node: out,

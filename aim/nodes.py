@@ -133,7 +133,6 @@ class CompilationContext:
 	order: list[int]
 
 
-
 _PARSE_CONTEXT = contextvars.ContextVar("_PARSE_CONTEXT")
 
 
@@ -440,6 +439,20 @@ class unison(Node):
 	max_voices: int = 32  # Destroy old voices when this limit is hit
 
 	output = Outlet(DataType.NONE)  # The format changes dynamically
+
+
+@node
+class spawn(Node):
+	"""
+	Spawns new voices when input levels goes above 0
+
+	The voice is held until input is 0 or lower.
+
+	Only support voice 0.
+	"""
+	input: Any = None
+
+	output = Outlet(DataType.SIGNAL)  # The format changes dynamically
 
 
 @node
