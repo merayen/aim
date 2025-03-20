@@ -6,6 +6,7 @@ E.g, an oscilloscope node that creates UI and reads plot data from the oscillosc
 Hardcoded to kyvi for now. Could also send outgoing node data on UDP and such, but we don't plan for
 that for now.
 """
+import time
 from typing import Optional
 import pylab as pl
 from aim.nodes import Node
@@ -39,6 +40,8 @@ class oscilloscope_listener(Listener):
 
 		self.fig.tight_layout()
 
+		self.last_draw = time.time()
+
 		pl.show(block=False)
 
 	def receive(self, voice_id: Optional[int], samples: Optional[list[float]]):
@@ -59,5 +62,8 @@ class oscilloscope_listener(Listener):
 			else:
 				self.lines[voice_id].set_ydata(samples)
 
-			self.fig.canvas.draw()
-			self.fig.canvas.flush_events()
+			if time.time() - self.last_draw >= 1/30:
+				self.fig.canvas.draw()
+				self.fig.canvas.flush_events()
+
+				self.last_draw = time.time()
