@@ -439,7 +439,7 @@ class unison(Node):
 	voices: int = 1  # For each key pressed
 	max_voices: int = 32  # Destroy old voices when this limit is hit
 
-	output = Outlet(DataType.SIGNAL)  # The format changes dynamically
+	output = Outlet(DataType.NONE)  # The format changes dynamically
 
 
 @node

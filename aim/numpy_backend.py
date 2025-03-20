@@ -716,7 +716,7 @@ def numpy_frequency(
 		init_code.append(f"{node.output._variable} = Signal(voices={{0: _ONES*440}})")
 	elif isinstance(node.input, (int, float)):
 		init_code.append(f"{node.output._variable} = Signal(voices={{0: _ONES*{node.input}}})")
-	elif node.input.datatype == DataType.MIDI:
+	elif isinstance(node.input, Outlet) and node.input.datatype == DataType.MIDI:
 		voice_id = create_variable()
 		voice = create_variable()
 		frame = create_variable()
@@ -848,14 +848,22 @@ def numpy_unison(
 		unsupported(node)
 
 	if isinstance(node.input, (int, float)):
+		node.output.datatype = DataType.SIGNAL
 		init_code.append(f"{node.output._variable} = Signal()")
 		if isinstance(node.voices, int):
 			init_code.append(f"for _ in range({node.voices}):")
 			init_code.append(f"	{node.output._variable}.voices[create_voice()] = _ONES * {node.input}")
 		else:
 			unsupported(node)
-	elif isinstance(node.input, Outlet) and node.input.datatype == DataType.SIGNAL:
-		init_code.append(f"{node.output._variable} = Signal()")
+
+	elif isinstance(node.input, Outlet) and node.input.datatype in (DataType.SIGNAL, DataType.MIDI):
+		node.output.datatype = node.input.datatype
+
+		if node.input.datatype == DataType.SIGNAL:
+			init_code.append(f"{node.output._variable} = Signal()")
+		else:
+			init_code.append(f"{node.output._variable} = Midi()")
+
 		if isinstance(node.voices, int):
 			# Create new, incoming voices
 			voice_map = create_variable()
