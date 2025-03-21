@@ -396,16 +396,6 @@ class dB(Node):
 
 
 @node
-class signal(Node):
-	"""Convert input to a signal
-
-	It can be audio, another signal (pass through), midi etc"""
-	input: Any = 0.0
-
-	output = Outlet(DataType.SIGNAL)
-
-
-@node
 class score(Node):
 	"""
 	Midi score written as a textfile

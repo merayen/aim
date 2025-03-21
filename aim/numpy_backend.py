@@ -262,6 +262,7 @@ def numpy_get(
 	init_code.append(f"{node.output._variable} = Signal()")
 
 	# Send last buffers data out
+	# TODO merayen support other types of data, not just assume SIGNAL
 	voice = create_variable()
 	voice_id = create_variable()
 	process_code.append(f"if \"{label_escaped}\" in piping_node_pipes:")
@@ -793,9 +794,13 @@ def numpy_score(
 				ups.append((start + length, note_code))
 
 		assert len(downs) == len(ups)
+		# TODO merayen don't sort, but rather rewrite event positions, bar based, and sort inside bars
 		downs.sort()
 		ups.sort()
 
+		max_bar = max(downs and downs[-1][0] or 0, ups and ups[-1][0] or 0) + 1
+
+		# TODO merayen use module beat count instead
 		sample_count = create_variable()
 		init_code.append(f"{sample_count} = 0")
 		process_code.append(f"global {sample_count}")
@@ -832,6 +837,7 @@ def numpy_score(
 
 		process_code.append(f"{sample_count} += {module_context.frame_count}")
 
+		# TODO merayen send midi data like pitchbend too
 	else:
 		unsupported(node)
 
@@ -859,6 +865,7 @@ def numpy_unison(
 	elif isinstance(node.input, Outlet) and node.input.datatype in (DataType.SIGNAL, DataType.MIDI):
 		node.output.datatype = node.input.datatype
 
+		# TODO merayen ensure all midi signals (raw?) are forwarded correctly
 		if node.input.datatype == DataType.SIGNAL:
 			init_code.append(f"{node.output._variable} = Signal()")
 		else:
