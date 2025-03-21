@@ -829,11 +829,11 @@ def numpy_score(
 		# Always clear our output buffer before adding data to it
 		process_code.append(f"{node.output._variable}.voices[0].clear()")
 
-		# Key down events generator
-		write_events(downs, 144)
-
 		# Key up events generator
 		write_events(ups, 128)
+
+		# Key down events generator
+		write_events(downs, 144)
 
 		process_code.append(f"{sample_count} += {module_context.frame_count}")
 
@@ -1344,7 +1344,7 @@ def compile_to_numpy(
 		f"_SILENCE = np.zeros({frame_count}, dtype='float32')",
 		f"_ONES = np.ones({frame_count}, dtype='float32')",
 		"process_counter = -1",
-		"voice_identifier = 0",  # Note: All dynamically created voices starts at 1. 0 is the special default voice
+		"voice_identifier = 0",  # Note: All dynamically created voices starts at 1. 0 is the default voice
 		"def create_voice():",
 		"	global voice_identifier",
 		"	voice_identifier += 1",
