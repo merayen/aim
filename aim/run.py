@@ -63,7 +63,7 @@ class CompileAndRun:
 						if node_data == {"status": 0}:
 							pass
 						elif node_data.get("debug"):  # Print to stdout
-							print(f"DEBUG:{node_data['node']}:{node_data['name']}: {node_data['data']}")
+							print(f"DEBUG:{node_data['time']:.3f}s:{node_data['node']}:{node_data['name']}: {node_data['data']}")
 						else:
 							self._messages_to_listeners.put(node_data)
 

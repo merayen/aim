@@ -776,8 +776,8 @@ def numpy_score(
 			ups = []
 			for line in (x.strip() for x in f if x.strip() and not x.strip().startswith("#")):
 				start, length, note = line.split()
-				assert all(x in "0123456789+-/" for x in start)
-				assert all(x in "0123456789+-/" for x in length)
+				assert all(x in "0123456789+-/." for x in start)
+				assert all(x in "0123456789+-/." for x in length)
 				assert len(note) in (2,3)
 				char, transpose = note[:2]
 				sharp = bool(note[2:3] == "#")
@@ -1351,6 +1351,7 @@ def compile_to_numpy(
 		"	voices: dict[int, list[tuple[int, int]]] = field(default_factory=lambda:{})",
 		"	raw: list[int, bytes] = field(default_factory=lambda:[])",  # All data. For still transferring pitch wheel data etc.
 		"random = np.random.default_rng()",
+		"start_time = time.monotonic()",
 		"piping_node_pipes = {}",
 	]
 
@@ -1432,7 +1433,7 @@ def debug_print(node: Node, code: str):
 	Only meant for when developing nodes, not normal usage.
 	"""
 	# TODO merayen probably only do this when "aim --debug"
-	return f"print(json.dumps({{'node': '{id(node)}', 'name': '{node.__class__.__name__}', 'debug': True, 'data': {code}}}))"
+	return f"print(json.dumps({{'node': '{id(node)}', 'name': '{node.__class__.__name__}', 'time': time.monotonic()-start_time, 'debug': True, 'data': {code}}}))"
 
 
 def unsupported(node: Node):
