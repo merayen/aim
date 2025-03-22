@@ -818,12 +818,14 @@ def numpy_score(
 			init_code.append(f"]")
 
 			index = create_variable()  # next position to evaluate to play
+			sample_offset = create_variable()
 			init_code.append(f"{index} = 0")
 			process_code.append(f"global {index}")
-			process_code.append(f"while {index} < {len(events)} and {variable}[{index}][0] <= {sample_count} / {module_context.sample_rate}:")
-			process_code.append(f"	{node.output._variable}.voices[0].append((0,{midi_code}))")  # TODO merayen correct timings
-			process_code.append(f"	{node.output._variable}.voices[0].append((0,{variable}[{index}][1]))")
-			process_code.append(f"	{node.output._variable}.voices[0].append((0,127))")  # TODO merayen need amplitude value
+			process_code.append(f"while {index} < {len(events)} and {variable}[{index}][0]*{module_context.sample_rate}<{sample_count} + {module_context.frame_count}:")  # TODO merayen respect bpm
+			process_code.append(f"	{sample_offset} = {variable}[{index}][0]*{module_context.sample_rate}-{sample_count}")
+			process_code.append(f"	{node.output._variable}.voices[0].append(({sample_offset},{midi_code}))")
+			process_code.append(f"	{node.output._variable}.voices[0].append(({sample_offset},{variable}[{index}][1]))")
+			process_code.append(f"	{node.output._variable}.voices[0].append(({sample_offset},127))")  # TODO merayen need amplitude value
 			process_code.append(f"	{index} += 1")
 
 		# Always clear our output buffer before adding data to it
