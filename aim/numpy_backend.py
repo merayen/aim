@@ -109,15 +109,17 @@ def _oscillator_clock(
 			process_code.append(f"		elif {packet}.get({voice_id}): {packet}[{voice_id}].append(({frame},{byte}))")  # Data
 
 			process_code.append(f"		if len({packet}[{voice_id}]) == 3:")  # Datas with 3 packets
-			process_code.append(f"			if {packet}[{voice_id}][0][1] == 144 and {packet}[{voice_id}][1][1] not in {keys}.get({voice_id}, []):")  # Key down
+			process_code.append(f"			if {packet}[{voice_id}][0][1] == 144:")  # Key down
 			process_code.append(f"				{frequencies}[{voice_id}][{packet}[{voice_id}][2][0]:] = 440 * 2**(({packet}[{voice_id}][1][1] - 69) / 12)")
 			process_code.append(f"				{amplitudes}[{voice_id}][{packet}[{voice_id}][2][0]:] = {packet}[{voice_id}][2][1] / 127")
+			process_code.append(f"				if {packet}[{voice_id}][1][1] in {keys}[{voice_id}]:")
+			process_code.append(f"					{keys}[{voice_id}].remove({packet}[{voice_id}][1][1])")
 			process_code.append(f"				{keys}[{voice_id}].append({packet}[{voice_id}][1][1])")
 
 			process_code.append(f"			elif {packet}[{voice_id}][0][1] == 128 and {voice_id} in {keys} and {packet}[{voice_id}][1][1] in {keys}[{voice_id}]:")  # Key up
 			process_code.append(f"				if {keys}[{voice_id}][-1] == {packet}[{voice_id}][1][1]:")
 			process_code.append(f"					{amplitudes}[{voice_id}][{packet}[{voice_id}][2][0]:] = 0")
-			process_code.append(f"					{keys}[{voice_id}].remove({packet}[{voice_id}][1][1])")  # TODO merayen and then we should probably pop back to the previous key pushed down, if any
+			process_code.append(f"				{keys}[{voice_id}].remove({packet}[{voice_id}][1][1])")  # TODO merayen and then we should probably pop back to the previous key pushed down, if any
 
 			process_code.append(f"			{packet}[{voice_id}].clear()")
 
