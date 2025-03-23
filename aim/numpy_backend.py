@@ -99,26 +99,30 @@ def _oscillator_clock(
 			voice = create_variable()
 			process_code.append(f"for {voice_id}, {voice} in {node.frequency._variable}.voices.items():")
 			process_code.append(f"	{packet}.setdefault({voice_id}, [])")
-			process_code.append(f"	{frequencies}.setdefault({voice_id}, 0)")
-			process_code.append(f"	{amplitudes}.setdefault({voice_id}, 0)")
 			process_code.append(f"	{clock}.setdefault({voice_id}, 0)")
 			process_code.append(f"	{keys}.setdefault({voice_id}, [])")
+			process_code.append(f"	{frequencies}[{voice_id}] = {frequencies}.get({voice_id}, [0])[-1] * _ONES")
+			process_code.append(f"	{amplitudes}[{voice_id}] = {amplitudes}.get({voice_id}, [0])[-1] * _ONES")
 
 			process_code.append(f"	for {frame}, {byte} in {voice}:")
-			process_code.append(f"		if {byte} & 128: {packet}[{voice_id}] = [{byte}]")  # Command
-			process_code.append(f"		elif {packet}.get({voice_id}): {packet}[{voice_id}].append({byte})")  # Data
+			process_code.append(f"		if {byte} & 128: {packet}[{voice_id}] = [({frame},{byte})]")  # Command
+			process_code.append(f"		elif {packet}.get({voice_id}): {packet}[{voice_id}].append(({frame},{byte}))")  # Data
 
-			process_code.append(f"	if len({packet}[{voice_id}]) == 3:")  # Datas with 3 packets
-			process_code.append(f"		if {packet}[{voice_id}][0] == 144:")  # Key down
-			process_code.append(f"			{frequencies}[{voice_id}] = 440 * 2**(({packet}[{voice_id}][1] - 69) / 12)")
-			process_code.append(f"			{amplitudes}[{voice_id}] = {packet}[{voice_id}][2] / 127")
-			process_code.append(f"			{keys}[{voice_id}] = {packet}[{voice_id}][1]")
+			process_code.append(f"		if len({packet}[{voice_id}]) == 3:")  # Datas with 3 packets
+			process_code.append(f"			if {packet}[{voice_id}][0][1] == 144 and {packet}[{voice_id}][1][1] not in {keys}.get({voice_id}, []):")  # Key down
+			process_code.append(f"				{frequencies}[{voice_id}][{packet}[{voice_id}][2][0]:] = 440 * 2**(({packet}[{voice_id}][1][1] - 69) / 12)")
+			process_code.append(f"				{amplitudes}[{voice_id}][{packet}[{voice_id}][2][0]:] = {packet}[{voice_id}][2][1] / 127")
+			process_code.append(f"				{keys}[{voice_id}].append({packet}[{voice_id}][1][1])")
 
-			process_code.append(f"		elif {packet}[{voice_id}][0] == 128 and {voice_id} in {keys} and {packet}[{voice_id}][1] == {keys}[{voice_id}]:")  # Key up
-			process_code.append(f"			{amplitudes}[{voice_id}] = 0")
+			process_code.append(f"			elif {packet}[{voice_id}][0][1] == 128 and {voice_id} in {keys} and {packet}[{voice_id}][1][1] in {keys}[{voice_id}]:")  # Key up
+			process_code.append(f"				if {keys}[{voice_id}][-1] == {packet}[{voice_id}][1][1]:")
+			process_code.append(f"					{amplitudes}[{voice_id}][{packet}[{voice_id}][2][0]:] = 0")
+			process_code.append(f"					{keys}[{voice_id}].remove({packet}[{voice_id}][1][1])")  # TODO merayen and then we should probably pop back to the previous key pushed down, if any
 
-			process_code.append(f"	{clock_array} = ({clock}[{voice_id}] + np.cumsum(_ONES * ({frequencies}[{voice_id}] / {module_context.sample_rate})))")
-			process_code.append(f"	{clock}[{voice_id}] = {clock_array}[-1] % 1")  # Save position for next tim)
+			process_code.append(f"			{packet}[{voice_id}].clear()")
+
+			process_code.append(f"	{clock_array} = {clock}[{voice_id}] + np.cumsum({frequencies}[{voice_id}] / {module_context.sample_rate})")
+			process_code.append(f"	{clock}[{voice_id}] = {clock_array}[-1] % 1")  # Save position for next time
 			process_code.append(f"	{node.output._variable}.voices[{voice_id}] = ({func}) * {amplitudes}[{voice_id}]")
 
 			# Remove voices that has disappeared
@@ -773,8 +777,7 @@ def numpy_score(
 	elif isinstance(node.path, str):
 		# Key down and key ups
 		with open(node.path) as f:
-			downs = []
-			ups = []
+			midis = []
 			for line in (x.strip() for x in f if x.strip() and not x.strip().startswith("#")):
 				start, length, note = line.split()
 				assert all(x in "0123456789+-/." for x in start)
@@ -785,57 +788,46 @@ def numpy_score(
 				assert char in "abcdefg"
 				assert transpose.isdigit()
 				transpose = int(transpose)
-				start = eval(start)
-				length = eval(length)
+				start = int(eval(start)*module_context.sample_rate)  # TODO merayen respect current bpm, and position
+				length = int(eval(length)*module_context.sample_rate)
 
 				note_code = 12 + transpose*12 + "a bc d ef g".index(char) + int(sharp)
 
-				downs.append((start, note_code))
-				ups.append((start + length, note_code))
+				midis.extend([(start, 144), (start, note_code), (start, 127)])
+				midis.extend([(start+length, 128), (start+length, note_code), (start+length, 127)])
 
-		assert len(downs) == len(ups)
-		# TODO merayen don't sort, but rather rewrite event positions, bar based, and sort inside bars
-		downs.sort()
-		ups.sort()
-
-		max_bar = max(downs and downs[-1][0] or 0, ups and ups[-1][0] or 0) + 1
+		midis.sort(key=lambda x:x[0])
 
 		# TODO merayen use module beat count instead
 		sample_count = create_variable()
 		init_code.append(f"{sample_count} = 0")
 		process_code.append(f"global {sample_count}")
 
-		def write_events(events, midi_code):
-			variable = create_variable()
-			init_code.append(f"{variable} = [")
-			init_code.extend(
-				",".join(
-					f"({start},{note})"
-					for (start, note) in events[i*10:i*10+10]
-				) + ("," if i*10+10 < len(events) else "")
-				for i in range(len(events)//10 + 1)
-			)
-			init_code.append(f"]")
+		assert all(isinstance(y, (int)) for x in midis for y in x)
 
-			index = create_variable()  # next position to evaluate to play
-			sample_offset = create_variable()
-			init_code.append(f"{index} = 0")
-			process_code.append(f"global {index}")
-			process_code.append(f"while {index} < {len(events)} and {variable}[{index}][0]*{module_context.sample_rate}<{sample_count} + {module_context.frame_count}:")  # TODO merayen respect bpm
-			process_code.append(f"	{sample_offset} = {variable}[{index}][0]*{module_context.sample_rate}-{sample_count}")
-			process_code.append(f"	{node.output._variable}.voices[0].append(({sample_offset},{midi_code}))")
-			process_code.append(f"	{node.output._variable}.voices[0].append(({sample_offset},{variable}[{index}][1]))")
-			process_code.append(f"	{node.output._variable}.voices[0].append(({sample_offset},127))")  # TODO merayen need amplitude value
-			process_code.append(f"	{index} += 1")
+		midi_data = create_variable()
+		init_code.append(f"{midi_data} = [")
+		init_code.extend(
+			",".join(
+				str(x) for x in midis[i*10:i*10+10]
+			) + ("," if i*10+10 < len(midis) else "")
+			for i in range(len(midis)//10 + 1)
+		)
+		init_code.append(f"]")
+
+
+		index = create_variable()  # next position to evaluate to play
+		sample_offset = create_variable()
+		init_code.append(f"{index} = 0")
+		process_code.append(f"global {index}")
 
 		# Always clear our output buffer before adding data to it
 		process_code.append(f"{node.output._variable}.voices[0].clear()")
-
-		# Key up events generator
-		write_events(ups, 128)
-
-		# Key down events generator
-		write_events(downs, 144)
+		process_code.append(f"while {index} < {len(midis)} and {midi_data}[{index}][0] < {sample_count} + {module_context.frame_count}:")  # TODO merayen respect bpm
+		process_code.append(f"	{sample_offset} = int({midi_data}[{index}][0]-{sample_count})")
+		process_code.append(f"	assert 0 <= {sample_offset} < {module_context.frame_count}")
+		process_code.append(f"	{node.output._variable}.voices[0].append(({sample_offset},{midi_data}[{index}][1]))")
+		process_code.append(f"	{index} += 1")
 
 		process_code.append(f"{sample_count} += {module_context.frame_count}")
 
