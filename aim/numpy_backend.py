@@ -923,20 +923,34 @@ def numpy_spawn(
 
 	if isinstance(node.input, Outlet) and node.input.datatype == DataType.SIGNAL:
 		x = create_variable()
+		i = create_variable()
 		triggering = create_variable()
+		ending = create_variable()
+		voice_id = create_variable()
+		voices_to_end = create_variable()
 		init_code.append(f"{node.output._variable} = Signal()")
+		init_code.append(f"{voices_to_end} = []")
 		init_code.append(f"{triggering} = 0")
 		process_code.append(f"global {triggering}")
+		process_code.append(f"for {voice_id} in {voices_to_end}:")
+		process_code.append(f"	{node.output._variable}.voices.pop({voice_id})")
+		process_code.append(f"{voices_to_end}.clear()")
 		process_code.append(f"if 0 in {node.input._variable}.voices:")
-		process_code.append(f"	if ({node.input._variable}.voices[0] <= 0).any():")
-		process_code.append(f"		{node.output._variable}.voices.clear()")
-		process_code.append(f"	for {x} in {node.input._variable}.voices[0]:")  # XXX numba it?
+		process_code.append(f"	if {triggering}:")
+		process_code.append(f"		for {voice_id} in {node.output._variable}.voices:")
+		process_code.append(f"			{node.output._variable}.voices[{voice_id}] = _ONES")
+		process_code.append(f"	for {i},{x} in enumerate({node.input._variable}.voices[0]):")  # XXX numba it?
 		process_code.append(f"		if {x} > 0:")
 		process_code.append(f"			if not {triggering}:")
-		process_code.append(f"				{node.output._variable}.voices[create_voice()] = _ONES")  # TODO merayen timing
+		process_code.append(f"				{node.output._variable}.voices[create_voice()] = np.concatenate((_SILENCE[:{i}], _ONES[{i}:]))")  # TODO merayen timing
 		process_code.append(f"				{triggering} = 1")
-		process_code.append(f"		else:")
+		process_code.append(f"		elif {triggering}:")
 		process_code.append(f"			{triggering} = 0")
+		process_code.append(f"			{ending} = np.concatenate((_ONES[:{i}], _SILENCE[{i}:]))")
+		process_code.append(f"			for {voice_id} in {node.output._variable}.voices:")
+		process_code.append(f"				if {voice_id} not in {voices_to_end}:")
+		process_code.append(f"					{node.output._variable}.voices[{voice_id}] = {ending}")
+		process_code.append(f"					{voices_to_end}.append({voice_id})")
 	else:
 		unsupported(node)
 
@@ -1324,7 +1338,7 @@ def numpy_out(module_context: ModuleContext, node: out, init_code: list[str], pr
 
 def compile_to_numpy(
 	compilation_context: CompilationContext,
-	frame_count: int = 512,
+	frame_count: int = 2**13,
 	sample_rate: int = 48000,
 ) -> str:
 	assert isinstance(compilation_context, CompilationContext)
@@ -1349,6 +1363,13 @@ def compile_to_numpy(
 		"class Signal:",
 		"	voices: dict = field(default_factory=lambda:{})",
 		"	channel_map: dict = field(default_factory=lambda:{})",
+
+		# Set when voice is starting, to give a hint to receivers where in the buffer the actual start processing
+		"	voice_start: dict = field(default_factory=lambda:{})",
+		# Set when voice is starting, to give a hint to receivers where in the buffer to stop processing.
+		# After this buffer, the voice should go away.
+		"	voice_stop: dict = field(default_factory=lambda:{})",  # Set when voice is starting, to give a hint to receivers where in the buffer the actual start processing
+		"	enable: dict = field(default_factory=lambda:{})",
 		"@dataclass",
 		"class Midi:",
 		"	voices: dict[int, list[tuple[int, int]]] = field(default_factory=lambda:{})",
